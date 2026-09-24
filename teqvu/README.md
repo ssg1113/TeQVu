@@ -141,7 +141,7 @@ The main goal of TeQVu is to provide a single platform where users can quickly u
 
 ## Author
 
-**S. S. Gayashan De Silva**
+**S S Gayashan De Silva**
 
 Software Engineering Undergraduate
 
