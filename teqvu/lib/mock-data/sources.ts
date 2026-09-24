@@ -1,0 +1,115 @@
+import type { Source, StoryCluster, ProcessingJob, AdminStats } from '../types';
+import { articles, sources as initialSources } from './articles';
+
+export const sourcesList: Source[] = [
+  ...initialSources,
+  { id: 'mit-tech-review', name: 'MIT Technology Review', url: 'https://technologyreview.com', type: 'Official Blog', category: 'Emerging Tech', trustScore: 10, status: 'active', articlesCount: 1420, lastChecked: '2026-09-23T10:40:00Z', collectionFrequency: '2 hours' },
+  { id: 'aws-architecture', name: 'AWS Architecture Blog', url: 'https://aws.amazon.com/blogs/architecture', type: 'Official Blog', category: 'Cloud', trustScore: 10, status: 'active', articlesCount: 890, lastChecked: '2026-09-23T08:30:00Z', collectionFrequency: '4 hours' },
+  { id: 'kubernetes-io', name: 'Kubernetes Official Blog', url: 'https://kubernetes.io/blog', type: 'Official Blog', category: 'DevOps', trustScore: 10, status: 'active', articlesCount: 450, lastChecked: '2026-09-23T09:15:00Z', collectionFrequency: '12 hours' },
+  { id: 'acm-digital', name: 'ACM Digital Library', url: 'https://dl.acm.org', type: 'Research', category: 'Research', trustScore: 10, status: 'active', articlesCount: 15400, lastChecked: '2026-09-23T06:00:00Z', collectionFrequency: '24 hours' },
+  { id: 'ieee-xplore', name: 'IEEE Xplore', url: 'https://ieeexplore.ieee.org', type: 'Research', category: 'Research', trustScore: 10, status: 'active', articlesCount: 22100, lastChecked: '2026-09-23T06:30:00Z', collectionFrequency: '24 hours' },
+  { id: 'cloudflare-blog', name: 'Cloudflare Tech Blog', url: 'https://blog.cloudflare.com', type: 'Official Blog', category: 'Cybersecurity', trustScore: 10, status: 'active', articlesCount: 680, lastChecked: '2026-09-23T09:50:00Z', collectionFrequency: '6 hours' },
+];
+
+export const storyClusters: StoryCluster[] = [
+  {
+    id: 'cluster-claude4',
+    title: 'Anthropic Announces Next-Gen Frontier Models with Autonomous Agent Capabilities',
+    summary: 'Multiple tier-1 outlets and research entities reported on the Claude 4 architecture release, highlighting benchmark supremacy in software synthesis, multi-modal reasoning, and extended memory execution.',
+    articleCount: 14,
+    sourceCount: 9,
+    publishedAt: '2026-09-23T08:00:00Z',
+    technologies: ['LLM Agents', 'RAG', 'Transformer Architecture'],
+    category: 'AI/ML',
+    articles: articles.slice(0, 3),
+    primarySource: initialSources[9] || initialSources[0],
+  },
+  {
+    id: 'cluster-rust-linux',
+    title: 'Linux Kernel Integrates Rust Production Drivers Across Mainline Subsystems',
+    summary: 'Torvalds and subsystem maintainers merged native Rust abstraction layers and zero-cost safety drivers into the mainline tree, addressing historical memory vulnerability vectors.',
+    articleCount: 18,
+    sourceCount: 11,
+    publishedAt: '2026-09-22T14:30:00Z',
+    technologies: ['Rust', 'Linux', 'Systems Programming'],
+    category: 'Languages',
+    articles: articles.slice(1, 4),
+    primarySource: initialSources[8] || initialSources[1],
+  },
+  {
+    id: 'cluster-quantum-error',
+    title: 'Breakthrough in Topological Surface Code Syndrome Decoding Latency',
+    summary: 'Researchers demonstrate sub-microsecond quantum error mitigation at 99.9% physical gate fidelities, bringing fault-tolerant logical compute steps closer to practical reality.',
+    articleCount: 8,
+    sourceCount: 6,
+    publishedAt: '2026-09-21T18:00:00Z',
+    technologies: ['Quantum Computing', 'Qiskit'],
+    category: 'Quantum',
+    articles: articles.slice(2, 5),
+    primarySource: initialSources[2] || initialSources[0],
+  },
+];
+
+export const processingJobs: ProcessingJob[] = [
+  {
+    id: 'job-1',
+    name: 'RSS Feed Ingestion Pipeline',
+    status: 'running',
+    lastRun: '2026-09-23T11:20:00Z',
+    nextRun: '2026-09-23T11:35:00Z',
+    processedCount: 1248,
+    errorCount: 2,
+    details: 'Polling 42 active RSS feeds across global tech portals',
+  },
+  {
+    id: 'job-2',
+    name: 'AI Entity & Technology Extraction',
+    status: 'running',
+    lastRun: '2026-09-23T11:22:00Z',
+    nextRun: '2026-09-23T11:25:00Z',
+    processedCount: 854,
+    errorCount: 0,
+    details: 'FastAPI NLP service tagger: identifying emerging tech tokens',
+  },
+  {
+    id: 'job-3',
+    name: 'Story Clustering & Deduplication',
+    status: 'completed',
+    lastRun: '2026-09-23T11:15:00Z',
+    nextRun: '2026-09-23T11:45:00Z',
+    processedCount: 186,
+    errorCount: 0,
+    details: 'Semantic similarity threshold > 0.88 grouped into clusters',
+  },
+  {
+    id: 'job-4',
+    name: 'Trend Velocity & Scoring Engine',
+    status: 'completed',
+    lastRun: '2026-09-23T11:00:00Z',
+    nextRun: '2026-09-23T12:00:00Z',
+    processedCount: 1876,
+    errorCount: 0,
+    details: 'Updated mentions, source diversity, and 7-day sparklines',
+  },
+  {
+    id: 'job-5',
+    name: 'Personalized Newsletter Compiler',
+    status: 'queued',
+    lastRun: '2026-09-23T06:00:00Z',
+    nextRun: '2026-09-24T06:00:00Z',
+    processedCount: 14250,
+    errorCount: 1,
+    details: 'Compiling personalized daily digest for 14.2k active subscribers',
+  },
+];
+
+export const adminStats: AdminStats = {
+  totalUsers: 24890,
+  activeUsers: 14250,
+  articlesCollected: 184520,
+  sourcesCount: 342,
+  technologiesCount: 1876,
+  emergingTrends: 17,
+  emailsSent: 684200,
+  processingFailures: 7,
+};
