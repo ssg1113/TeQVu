@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Compass, CheckCircle2, ArrowRight, ArrowLeft, Sparkles, Mail, User, Shield } from 'lucide-react';
+import { CheckCircle2, ArrowRight, ArrowLeft, Sparkles, Mail, User, Shield } from 'lucide-react';
+import { Logo } from '../../components/ui/Logo';
 import { INTEREST_OPTIONS } from '../../lib/utils';
 import { useAppStore } from '../../lib/store/useAppStore';
 
@@ -28,11 +29,13 @@ export default function OnboardingPage() {
         {/* Brand Header */}
         <div className="flex items-center justify-between pb-6 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white">
-              <Compass className="w-5 h-5" />
-            </div>
+            <Logo variant="icon" size="sm" />
             <div>
-              <span className="font-extrabold text-base text-slate-900 dark:text-white">TeQVu Setup</span>
+              <span className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-1.5">
+                <span>Te</span>
+                <span className="bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent">Q</span>
+                <span>Vu Setup</span>
+              </span>
               <div className="text-[11px] text-slate-400">Step {step} of 3</div>
             </div>
           </div>

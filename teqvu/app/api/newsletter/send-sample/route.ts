@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { Resend } from 'resend';
@@ -85,6 +87,16 @@ function generateEmailHtml(data: {
   `
     : '';
 
+  let logoDataUri = '';
+  try {
+    const logoFilePath = path.join(process.cwd(), 'public', 'logo-icon-sm.png');
+    if (fs.existsSync(logoFilePath)) {
+      logoDataUri = `data:image/png;base64,${fs.readFileSync(logoFilePath).toString('base64')}`;
+    }
+  } catch (err) {
+    // Non-fatal fallback
+  }
+
   return `
   <!DOCTYPE html>
   <html>
@@ -101,17 +113,27 @@ function generateEmailHtml(data: {
               
               <!-- Header -->
               <tr>
-                <td style="padding: 32px; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #ffffff;">
+                <td style="padding: 28px 32px; background: linear-gradient(135deg, #0a0f1e 0%, #172554 100%); color: #ffffff;">
                   <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
                       <td>
-                        <div style="display: inline-block; padding: 4px 10px; border-radius: 6px; background-color: rgba(6, 182, 212, 0.2); border: 1px solid rgba(6, 182, 212, 0.4); font-size: 11px; font-family: monospace; color: #38bdf8; font-weight: 700; margin-bottom: 12px;">
-                          &bull; REAL-TIME INTELLIGENCE BRIEFING
-                        </div>
-                        <h1 style="margin: 0; font-size: 26px; font-weight: 900; letter-spacing: -0.5px; color: #ffffff;">
-                          TeQVu <span style="color: #38bdf8;">Daily Brief</span>
-                        </h1>
-                        <p style="margin: 6px 0 0 0; font-size: 13px; color: #94a3b8;">
+                        <table cellpadding="0" cellspacing="0" style="margin-bottom: 10px;">
+                          <tr>
+                            ${logoDataUri ? `
+                            <td style="vertical-align: middle; padding-right: 14px;">
+                              <img src="${logoDataUri}" alt="TeQVu" width="46" height="46" style="display: block; width: 46px; height: 46px; border-radius: 12px; box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);" />
+                            </td>` : ''}
+                            <td style="vertical-align: middle;">
+                              <div style="display: inline-block; padding: 3px 8px; border-radius: 6px; background-color: rgba(6, 182, 212, 0.2); border: 1px solid rgba(6, 182, 212, 0.4); font-size: 10px; font-family: monospace; color: #38bdf8; font-weight: 700; margin-bottom: 4px;">
+                                &bull; REAL-TIME INTELLIGENCE BRIEFING
+                              </div>
+                              <h1 style="margin: 0; font-size: 24px; font-weight: 900; letter-spacing: -0.5px; color: #ffffff; line-height: 1.2;">
+                                Te<span style="color: #38bdf8;">Q</span>Vu <span style="color: #94a3b8; font-weight: 400; font-size: 18px;">Daily Brief</span>
+                              </h1>
+                            </td>
+                          </tr>
+                        </table>
+                        <p style="margin: 0; font-size: 12px; color: #94a3b8;">
                           ${currentDate} &bull; Delivered to ${data.recipientEmail}
                         </p>
                       </td>

@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Compass, ArrowRight, Github, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
+import { ArrowRight, Github, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
+import { Logo } from '../../components/ui/Logo';
 import { signInWithGoogle, signInWithGitHub, signInWithEmail, isSupabaseConfigured } from '../../lib/supabase/client';
 import { useAppStore } from '../../lib/store/useAppStore';
 
@@ -103,12 +104,9 @@ export default function SignInPage() {
       <div className="w-full max-w-md bg-white dark:bg-[#0f1629] border border-slate-200/80 dark:border-slate-800/80 rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 animate-fade-in">
         {/* Brand */}
         <div className="text-center space-y-2">
-          <Link href="/" className="inline-flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-cyan-500/20">
-              <Compass className="w-5 h-5" />
-            </div>
-            <span className="text-xl font-black tracking-tight text-slate-900 dark:text-white">TeQVu</span>
-          </Link>
+          <div className="flex justify-center pb-1">
+            <Logo linkToHome variant="horizontal" size="lg" />
+          </div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-white pt-2">Sign In</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Access your personalized intelligence feed & watchlist.

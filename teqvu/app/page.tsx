@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  Compass,
   ArrowRight,
   TrendingUp,
   Sparkles,
@@ -33,6 +32,7 @@ import { ResearchCard } from '../components/cards/ResearchCard';
 import { StoryClusterCard } from '../components/cards/StoryClusterCard';
 import { Badge } from '../components/ui/Badge';
 import { Sparkline } from '../components/ui/Sparkline';
+import { Logo } from '../components/ui/Logo';
 import { INTEREST_OPTIONS, timeAgo } from '../lib/utils';
 import { useAppStore } from '../lib/store/useAppStore';
 import type { Technology, Article, ResearchPaper } from '../lib/types';
@@ -769,12 +769,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8 pb-10 border-b border-slate-200/80 dark:border-slate-800/80">
             {/* Column 1: Brand */}
             <div className="col-span-2">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white">
-                  <Compass className="w-4 h-4" />
-                </div>
-                <span className="text-lg font-black text-slate-900 dark:text-white">TeQVu</span>
-              </div>
+              <Logo linkToHome variant="horizontal" size="md" />
               <p className="mt-3 text-xs leading-relaxed max-w-sm text-slate-500">
                 Your Quick View of What&apos;s Next in Tech. Built for IT students, software engineers, technology researchers, and academics.
               </p>

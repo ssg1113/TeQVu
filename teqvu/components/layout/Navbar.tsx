@@ -10,7 +10,6 @@ import {
   Bell,
   Menu,
   X,
-  Compass,
   Zap,
   TrendingUp,
   Bookmark,
@@ -21,6 +20,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useAppStore } from '../../lib/store/useAppStore';
+import { Logo } from '../ui/Logo';
 
 export function Navbar() {
   const pathname = usePathname();
@@ -50,19 +50,7 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo */}
           <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 via-cyan-500 to-purple-500 flex items-center justify-center shadow-lg shadow-cyan-500/25 group-hover:scale-105 transition-transform">
-                <Compass className="w-5 h-5 text-white" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xl font-black tracking-tight bg-gradient-to-r from-slate-900 via-cyan-600 to-purple-600 dark:from-white dark:via-cyan-400 dark:to-purple-400 bg-clip-text text-transparent">
-                  TeQVu
-                </span>
-                <span className="hidden sm:inline text-[9px] uppercase tracking-wider text-slate-400 font-mono -mt-1">
-                  What&apos;s Next in Tech
-                </span>
-              </div>
-            </Link>
+            <Logo linkToHome variant="horizontal" size="md" priority />
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-1">

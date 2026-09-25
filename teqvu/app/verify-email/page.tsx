@@ -2,12 +2,16 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Compass, MailCheck, ArrowRight } from 'lucide-react';
+import { MailCheck, ArrowRight } from 'lucide-react';
+import { Logo } from '../../components/ui/Logo';
 
 export default function VerifyEmailPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-[#0a0f1e]">
       <div className="w-full max-w-md bg-white dark:bg-[#0f1629] border border-slate-200/80 dark:border-slate-800/80 rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 text-center">
+        <div className="flex justify-center pb-1">
+          <Logo linkToHome variant="horizontal" size="md" />
+        </div>
         <div className="w-12 h-12 mx-auto rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
           <MailCheck className="w-6 h-6" />
         </div>

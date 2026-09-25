@@ -23,6 +23,7 @@ import { useAppStore } from '../../lib/store/useAppStore';
 import { articles as fallbackArticles } from '../../lib/mock-data/articles';
 import { technologies as fallbackTechs } from '../../lib/mock-data/technologies';
 import { researchPapers as fallbackResearch } from '../../lib/mock-data/research';
+import { Logo } from '../../components/ui/Logo';
 
 export default function NewsletterPage() {
   const { newsletterPrefs, updateNewsletterPrefs, currentUser } = useAppStore();
@@ -422,11 +423,11 @@ export default function NewsletterPage() {
                 {/* Header */}
                 <div className="flex items-center justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800/60">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-cyan-500 flex items-center justify-center text-white font-bold text-xs">
-                      T
-                    </div>
-                    <span className="font-extrabold text-sm text-slate-900 dark:text-white">
-                      TeQVu Brief
+                    <Logo variant="icon" size="xs" />
+                    <span className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-1">
+                      <span>Te</span>
+                      <span className="bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent">Q</span>
+                      <span>Vu Brief</span>
                     </span>
                   </div>
                   <span className="text-[10px] font-mono text-slate-400">
