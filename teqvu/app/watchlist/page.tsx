@@ -44,6 +44,24 @@ export default function WatchlistPage() {
 
         {/* Watchlist Table */}
         <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0f1629] overflow-hidden shadow-sm">
+          {watchedTechs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+              <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-4">
+                <TrendingUp className="w-6 h-6 text-cyan-400" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">No technologies followed yet</h3>
+              <p className="text-sm text-slate-400 max-w-xs mb-6">
+                Follow technologies from the Technologies page to track their velocity and get notified of significant changes.
+              </p>
+              <Link
+                href="/technologies"
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-500 transition shadow-md shadow-cyan-500/20"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Browse Technologies</span>
+              </Link>
+            </div>
+          ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200/80 dark:border-slate-800/80 text-slate-400 font-mono uppercase tracking-wider text-[10px]">
@@ -72,14 +90,14 @@ export default function WatchlistPage() {
                       >
                         {tech.name}
                       </Link>
-                      <div className="text-[11px] text-slate-400 line-clamp-1">
+                      <div className="text-[11px] text-slate-400 line-clamp-1 max-w-[160px]">
                         {tech.description}
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 font-medium">
+                    <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
                       {tech.category}
                     </td>
-                    <td className="py-3.5 px-4 font-mono font-bold text-slate-900 dark:text-white">
+                    <td className="py-3.5 px-4 font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
                       {tech.trendScore} / 100
                     </td>
                     <td className="py-3.5 px-4">
@@ -130,6 +148,7 @@ export default function WatchlistPage() {
               </tbody>
             </table>
           </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

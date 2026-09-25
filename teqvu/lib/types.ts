@@ -58,6 +58,8 @@ export interface Article {
   clusterSize?: number;     // if part of story cluster
   clusterId?: string;
   aiSummary?: AISummary;
+  discussCount?: number;
+  isBreaking?: boolean;
 }
 
 export interface AISummary {

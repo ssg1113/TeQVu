@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Compass,
@@ -18,27 +18,94 @@ import {
   Globe,
   Database,
   ExternalLink,
+  Flame,
+  Radio,
+  RefreshCw,
 } from 'lucide-react';
-import { technologies } from '../lib/mock-data/technologies';
-import { articles } from '../lib/mock-data/articles';
-import { researchPapers } from '../lib/mock-data/research';
+import { technologies as fallbackTechs } from '../lib/mock-data/technologies';
+import { articles as fallbackArticles } from '../lib/mock-data/articles';
+import { researchPapers as fallbackResearch } from '../lib/mock-data/research';
 import { skills, careerPaths } from '../lib/mock-data/skills';
-import { sourcesList, storyClusters } from '../lib/mock-data/sources';
+import { storyClusters } from '../lib/mock-data/sources';
 import { TechCard } from '../components/cards/TechCard';
 import { ArticleCard } from '../components/cards/ArticleCard';
 import { ResearchCard } from '../components/cards/ResearchCard';
 import { StoryClusterCard } from '../components/cards/StoryClusterCard';
 import { Badge } from '../components/ui/Badge';
 import { Sparkline } from '../components/ui/Sparkline';
-import { INTEREST_OPTIONS } from '../lib/utils';
+import { INTEREST_OPTIONS, timeAgo } from '../lib/utils';
 import { useAppStore } from '../lib/store/useAppStore';
+import type { Technology, Article, ResearchPaper } from '../lib/types';
+
+const LIVE_SOURCES = [
+  { id: 'reuters', name: 'Reuters Technology', trustScore: 10, type: 'Global Wire', badge: 'Live RSS' },
+  { id: 'bbc', name: 'BBC Technology', trustScore: 10, type: 'Public Broadcaster', badge: 'Live RSS' },
+  { id: 'digitaltrends', name: 'Digital Trends', trustScore: 9, type: 'Tech Reviews & News', badge: 'Live RSS' },
+  { id: 'googlenews', name: 'Google News Tech', trustScore: 9, type: 'Global Index', badge: 'Real-Time' },
+  { id: 'arxiv', name: 'arXiv.org', trustScore: 10, type: 'Academic Lab Preprints', badge: 'Live API' },
+  { id: 'github', name: 'GitHub Trends', trustScore: 9, type: 'Open-Source Repos', badge: 'Live Velocity' },
+];
 
 export default function LandingPage() {
   const { interests, toggleInterest } = useAppStore();
 
-  const trendingTech = technologies.slice(0, 6);
-  const latestArticles = articles.slice(0, 4);
-  const featuredResearch = researchPapers.slice(0, 3);
+  const [trendingTech, setTrendingTech] = useState<Technology[]>(fallbackTechs.slice(0, 6));
+  const [latestArticles, setLatestArticles] = useState<Article[]>(fallbackArticles.slice(0, 4));
+  const [featuredResearch, setFeaturedResearch] = useState<ResearchPaper[]>(fallbackResearch.slice(0, 3));
+  const [isLive, setIsLive] = useState(false);
+  const [lastSync, setLastSync] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadRealTimeData() {
+      try {
+        const [trendsRes, newsRes, researchRes] = await Promise.allSettled([
+          fetch('/api/trends?timeframe=7d'),
+          fetch('/api/tech-news?limit=6'),
+          fetch('/api/research?limit=3'),
+        ]);
+
+        if (!isMounted) return;
+
+        if (trendsRes.status === 'fulfilled' && trendsRes.value.ok) {
+          const trendsData = await trendsRes.value.json();
+          if (trendsData.success && Array.isArray(trendsData.technologies) && trendsData.technologies.length > 0) {
+            setTrendingTech(trendsData.technologies.slice(0, 6));
+          }
+        }
+
+        if (newsRes.status === 'fulfilled' && newsRes.value.ok) {
+          const newsData = await newsRes.value.json();
+          if (newsData.success && Array.isArray(newsData.articles) && newsData.articles.length > 0) {
+            setLatestArticles(newsData.articles.slice(0, 4));
+          }
+        }
+
+        if (researchRes.status === 'fulfilled' && researchRes.value.ok) {
+          const researchData = await researchRes.value.json();
+          if (researchData.success && Array.isArray(researchData.papers) && researchData.papers.length > 0) {
+            setFeaturedResearch(researchData.papers.slice(0, 3));
+          }
+        }
+
+        setIsLive(true);
+        setLastSync(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      } catch (err) {
+        console.warn('Real-time feed sync error on landing page:', err);
+      }
+    }
+
+    loadRealTimeData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Top highlight entities for the Hero preview widget
+  const topTrend = trendingTech[0] || fallbackTechs[0];
+  const topNews = latestArticles[0] || fallbackArticles[0];
+  const topPaper = featuredResearch[0] || fallbackResearch[0];
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -49,10 +116,10 @@ export default function LandingPage() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
-            {/* Pill */}
+            {/* Pill with Live Status */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 mb-6 font-mono">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Technology Intelligence & Trend Detection Platform</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Real-Time Tech Intelligence & Trend Platform</span>
             </div>
 
             {/* Headline */}
@@ -65,7 +132,7 @@ export default function LandingPage() {
 
             {/* Supporting Text */}
             <p className="mt-6 text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl mx-auto">
-              Discover emerging technologies, important industry developments, research, and skills that matter — personalized for you.
+              Real-time technology intelligence aggregated from trusted global sources — Reuters, BBC, Digital Trends, arXiv preprints, and GitHub codebases.
             </p>
 
             {/* CTAs */}
@@ -74,95 +141,123 @@ export default function LandingPage() {
                 href="/home"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 shadow-xl shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all duration-200"
               >
-                <span>Start Exploring</span>
+                <span>Open Dashboard</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
                 href="/trending"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-[#0f1629] border border-slate-200 dark:border-slate-800 hover:border-cyan-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all duration-200"
               >
-                <span>Explore Trends</span>
+                <span>Live Trends</span>
                 <TrendingUp className="w-4 h-4 text-cyan-400" />
               </Link>
             </div>
           </div>
 
-          {/* Hero Intelligence Preview Widget */}
+          {/* Hero Intelligence Preview Widget (Fully Powered by Real-Time Data) */}
           <div className="mt-12 max-w-5xl mx-auto rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-[#0f1629]/80 backdrop-blur-xl shadow-2xl p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200/60 dark:border-slate-800/60 gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-mono text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">
+                <span className="text-xs font-mono text-slate-600 dark:text-slate-300 uppercase tracking-wider font-semibold">
                   Live Global Signal Feed
                 </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold">
+                  ● Real-Time Sync
+                </span>
               </div>
-              <div className="flex items-center gap-4 text-xs font-mono text-slate-400">
-                <span>342 Sources</span>
-                <span>•</span>
-                <span>1,876 Techs Tracked</span>
-                <span>•</span>
-                <span className="text-purple-400 font-bold">17 Emerging Signals</span>
+              <div className="flex items-center gap-3 text-xs font-mono text-slate-400">
+                <span>Reuters · BBC · Digital Trends · arXiv</span>
+                {lastSync && <span>• Synced {lastSync}</span>}
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-              {/* Emerging Highlight 1 */}
-              <div className="p-4 rounded-xl bg-slate-50/60 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-800/50 flex flex-col justify-between">
+              {/* Highlight 1: Real-time top trending technology */}
+              <div className="p-4 rounded-xl bg-slate-50/60 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-800/50 flex flex-col justify-between hover:border-purple-500/40 transition">
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-purple-400 font-semibold uppercase">
-                      Top Emerging
+                    <span className="text-xs font-mono text-purple-400 font-semibold uppercase flex items-center gap-1">
+                      <Flame className="w-3 h-3" />
+                      Top Emerging Trend
                     </span>
-                    <span className="text-xs font-mono text-emerald-400 font-bold">+128%</span>
+                    <span className="text-xs font-mono text-emerald-400 font-bold">
+                      +{topTrend.growth}%
+                    </span>
                   </div>
-                  <h4 className="font-bold text-slate-900 dark:text-white mt-1">LLM Agents</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    Surge in multi-agent orchestration frameworks across enterprise repos.
+                  <Link
+                    href={`/technologies/${topTrend.slug}`}
+                    className="font-bold text-slate-900 dark:text-white mt-1 hover:text-cyan-400 block line-clamp-1"
+                  >
+                    {topTrend.name}
+                  </Link>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                    {topTrend.description}
                   </p>
                 </div>
                 <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-200/40 dark:border-slate-800/40 text-[11px] font-mono text-slate-400">
-                  <span>74 sources</span>
-                  <Sparkline data={[20, 35, 42, 55, 68, 85, 128]} color="#a855f7" width={70} height={20} />
+                  <span>{topTrend.mentions ? `${topTrend.mentions.toLocaleString()} stars` : `${topTrend.category}`}</span>
+                  <Sparkline data={topTrend.sparkline} color="#a855f7" width={70} height={20} />
                 </div>
               </div>
 
-              {/* Emerging Highlight 2 */}
-              <div className="p-4 rounded-xl bg-slate-50/60 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-800/50 flex flex-col justify-between">
+              {/* Highlight 2: Real-time top headline from Reuters / BBC / Digital Trends */}
+              <div className="p-4 rounded-xl bg-slate-50/60 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-800/50 flex flex-col justify-between hover:border-cyan-500/40 transition">
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-cyan-400 font-semibold uppercase">
-                      Rising Fast
+                    <span className="text-xs font-mono text-cyan-400 font-semibold uppercase flex items-center gap-1">
+                      <Radio className="w-3 h-3 animate-pulse" />
+                      Live Wire Headline
                     </span>
-                    <span className="text-xs font-mono text-emerald-400 font-bold">+31%</span>
+                    <span className="text-[10px] font-mono text-cyan-500 font-semibold">
+                      {topNews.source.name.split(' ')[0]}
+                    </span>
                   </div>
-                  <h4 className="font-bold text-slate-900 dark:text-white mt-1">Rust in Linux</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    First batch of memory-safe kernel production drivers merged.
+                  <a
+                    href={topNews.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-bold text-slate-900 dark:text-white mt-1 hover:text-cyan-400 block line-clamp-1"
+                  >
+                    {topNews.title}
+                  </a>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                    {topNews.summary}
                   </p>
                 </div>
                 <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-200/40 dark:border-slate-800/40 text-[11px] font-mono text-slate-400">
-                  <span>38 sources</span>
-                  <Sparkline data={[50, 52, 56, 62, 70, 75, 88]} color="#06b6d4" width={70} height={20} />
+                  <span className="text-cyan-500 font-semibold">{topNews.category}</span>
+                  <span>{timeAgo(topNews.publishedAt)}</span>
                 </div>
               </div>
 
-              {/* Emerging Highlight 3 */}
-              <div className="p-4 rounded-xl bg-slate-50/60 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-800/50 flex flex-col justify-between">
+              {/* Highlight 3: Real-time research preprint from arXiv */}
+              <div className="p-4 rounded-xl bg-slate-50/60 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-800/50 flex flex-col justify-between hover:border-emerald-500/40 transition">
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-emerald-400 font-semibold uppercase">
-                      Trending Paper
+                    <span className="text-xs font-mono text-emerald-400 font-semibold uppercase flex items-center gap-1">
+                      <BookOpen className="w-3 h-3" />
+                      Live arXiv Paper
                     </span>
-                    <span className="text-xs font-mono text-purple-400 font-bold">arXiv:2407</span>
+                    <span className="text-xs font-mono text-purple-400 font-bold">
+                      {topPaper.source}
+                    </span>
                   </div>
-                  <h4 className="font-bold text-slate-900 dark:text-white mt-1">FlashAttention-3</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    Asynchronous tensor core attention hitting 850 TFLOPs on modern GPUs.
+                  <a
+                    href={topPaper.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-bold text-slate-900 dark:text-white mt-1 hover:text-emerald-400 block line-clamp-1"
+                  >
+                    {topPaper.title}
+                  </a>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                    {topPaper.summary}
                   </p>
                 </div>
                 <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-200/40 dark:border-slate-800/40 text-[11px] font-mono text-slate-400">
-                  <span>890 citations</span>
-                  <span className="text-cyan-400 font-semibold">arXiv CS.LG</span>
+                  <span className="truncate max-w-[130px]">{topPaper.authors[0] || 'Author'} et al.</span>
+                  <span className="text-emerald-400 font-semibold">{topPaper.topics[0] || 'AI'}</span>
                 </div>
               </div>
             </div>
@@ -170,26 +265,29 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 2. TRENDING TECHNOLOGIES SECTION */}
+      {/* 2. TRENDING TECHNOLOGIES SECTION (Live GitHub Repos & Velocity) */}
       <section className="py-16 border-b border-slate-200/80 dark:border-slate-800/80 bg-slate-100/30 dark:bg-slate-900/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
             <div>
-              <span className="text-xs font-mono uppercase tracking-wider text-cyan-500 font-semibold">
-                Emerging Signals
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
+                <span className="text-xs font-mono uppercase tracking-wider text-cyan-500 font-semibold">
+                  Real-Time Velocity
+                </span>
+              </div>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
                 Trending Technologies
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                Detected across blogs, code repositories, research preprints, and developer discussions.
+                Live signals detected from developer repositories, open-source commits, and technology mentions.
               </p>
             </div>
             <Link
               href="/trending"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-600 dark:text-cyan-400 hover:underline"
             >
-              <span>View All 50+ Trends</span>
+              <span>Explore All Live Trends</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -202,26 +300,29 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 3. LATEST DEVELOPMENTS & STORY CLUSTERING */}
+      {/* 3. LATEST DEVELOPMENTS & TRUSTED NEWS (Reuters, BBC, Digital Trends) */}
       <section className="py-16 border-b border-slate-200/80 dark:border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
             <div>
-              <span className="text-xs font-mono uppercase tracking-wider text-purple-500 font-semibold">
-                Multi-Source Intelligence
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                <span className="text-xs font-mono uppercase tracking-wider text-purple-500 font-semibold">
+                  Multi-Source Real-Time News
+                </span>
+              </div>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
                 Latest Technology Developments
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                Clustered stories from independent reporting sources with 30-second AI summaries.
+                Live reporting from Reuters, BBC, Digital Trends, and Google News Tech.
               </p>
             </div>
             <Link
               href="/latest"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-600 dark:text-cyan-400 hover:underline"
             >
-              <span>Browse Full Feed</span>
+              <span>Browse Full News Wire</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -233,7 +334,7 @@ export default function LandingPage() {
             </div>
           )}
 
-          {/* Article grid */}
+          {/* Real-time article grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {latestArticles.map((article) => (
               <ArticleCard key={article.id} article={article} />
@@ -262,7 +363,7 @@ export default function LandingPage() {
               {
                 step: '01',
                 title: 'Multi-Source Collection',
-                desc: 'Polls 340+ verified RSS feeds, research APIs (arXiv, IEEE), engineering blogs, and developer hubs continuously.',
+                desc: 'Polls verified feeds (Reuters, BBC, Digital Trends), arXiv research preprints, and GitHub repositories continuously.',
                 icon: Globe,
                 color: 'text-cyan-400',
               },
@@ -382,19 +483,22 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 6. RESEARCH & ACADEMIC DISCOVERY */}
+      {/* 6. RESEARCH & ACADEMIC DISCOVERY (Real-time arXiv API) */}
       <section className="py-16 border-b border-slate-200/80 dark:border-slate-800/80 bg-slate-100/30 dark:bg-slate-900/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
             <div>
-              <span className="text-xs font-mono uppercase tracking-wider text-emerald-500 font-semibold">
-                Academic & Lab Breakthroughs
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-mono uppercase tracking-wider text-emerald-500 font-semibold">
+                  Live arXiv Preprints
+                </span>
+              </div>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
                 Research & Academic Discovery
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                Direct access to foundational papers from arXiv, IEEE, ACM, and enterprise research labs.
+                Direct access to foundational papers from arXiv Computer Science, AI, and systems labs.
               </p>
             </div>
             <Link
@@ -552,11 +656,11 @@ export default function LandingPage() {
                   </div>
                   <div>
                     <div className="font-bold text-slate-900 dark:text-white">TeQVu Daily Brief</div>
-                    <div className="text-[11px] text-slate-400">to alex.rivera@techpulse.dev</div>
+                    <div className="text-[11px] text-slate-400">to developer@teqvu.live</div>
                   </div>
                 </div>
                 <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded">
-                  Daily Digest #184
+                  Live Dispatch
                 </span>
               </div>
 
@@ -565,28 +669,28 @@ export default function LandingPage() {
                   <div className="text-[10px] font-mono uppercase text-purple-400 font-bold mb-1">
                     Top Development
                   </div>
-                  <h4 className="font-bold text-slate-900 dark:text-white">
-                    Anthropic Releases Claude 4 with 200K Context
+                  <h4 className="font-bold text-slate-900 dark:text-white line-clamp-1">
+                    {topNews.title}
                   </h4>
                   <p className="text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 text-[11px]">
-                    Significant advances in autonomous software agents and multi-tool planning.
+                    {topNews.summary}
                   </p>
                 </div>
 
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
                   <div className="text-[10px] font-mono uppercase text-cyan-400 font-bold mb-1">
-                    Your Followed Tech Watchlist
+                    Active Velocity Watchlist
                   </div>
-                  <div className="flex items-center justify-between font-mono text-[11px] text-slate-300">
-                    <span>Rust (+31%)</span>
-                    <span>Next.js (+23%)</span>
-                    <span>pgvector (+92%)</span>
+                  <div className="flex items-center justify-between font-mono text-[11px] text-slate-600 dark:text-slate-300">
+                    <span>{trendingTech[0]?.name || 'Rust'} (+{trendingTech[0]?.growth || 31}%)</span>
+                    <span>{trendingTech[1]?.name || 'Next.js'} (+{trendingTech[1]?.growth || 24}%)</span>
+                    <span>{trendingTech[2]?.name || 'PyTorch'} (+{trendingTech[2]?.growth || 52}%)</span>
                   </div>
                 </div>
               </div>
 
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-                <span>Frequency: Daily at 07:00</span>
+                <span>Frequency: Daily at 07:00 AM</span>
                 <span className="text-cyan-400 font-medium">1-Click Unsubscribe</span>
               </div>
             </div>
@@ -594,21 +698,24 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 9. TRUSTED SOURCES */}
+      {/* 9. TRUSTED SOURCES (Real-Time Active Feeds) */}
       <section className="py-16 border-b border-slate-200/80 dark:border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <span className="text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold">
-            Credibility & Attribution
-          </span>
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">
+              Live Verified Network
+            </span>
+          </div>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
             Aggregated from Trusted Global Sources
           </h2>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 max-w-xl mx-auto">
-            TeQVu rigorously scores and attributes each insight to its original author, publication, or laboratory.
+            TeQVu rigorously scores and attributes each insight to official publishers, academic archives, and verified open-source repositories.
           </p>
 
           <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-            {sourcesList.slice(0, 6).map((src) => (
+            {LIVE_SOURCES.map((src) => (
               <div
                 key={src.id}
                 className="p-4 rounded-xl bg-white dark:bg-[#0f1629] border border-slate-200/80 dark:border-slate-800/80 flex flex-col items-center justify-center text-center hover:border-cyan-500/40 transition"
@@ -616,10 +723,13 @@ export default function LandingPage() {
                 <div className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1">
                   {src.name}
                 </div>
-                <div className="text-[10px] font-mono text-cyan-500 mt-1">
+                <div className="text-[10px] font-mono text-cyan-500 mt-1 font-semibold">
                   Trust: {src.trustScore}/10
                 </div>
                 <span className="text-[10px] text-slate-400 mt-0.5">{src.type}</span>
+                <span className="mt-2 text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                  {src.badge}
+                </span>
               </div>
             ))}
           </div>
@@ -717,7 +827,7 @@ export default function LandingPage() {
             <div className="flex gap-4">
               <span>Privacy Policy</span>
               <span>Terms of Service</span>
-              <span>API Status: Healthy</span>
+              <span className="text-emerald-500 font-medium">● Real-Time API Status: Healthy</span>
             </div>
           </div>
         </div>

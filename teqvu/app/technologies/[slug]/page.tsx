@@ -30,6 +30,7 @@ import { ResearchCard } from '../../../components/cards/ResearchCard';
 import { TechCard } from '../../../components/cards/TechCard';
 import { formatGrowth } from '../../../lib/utils';
 import { useAppStore } from '../../../lib/store/useAppStore';
+import type { Technology } from '../../../lib/types';
 
 export default function TechnologyDetailPage() {
   const params = useParams();
@@ -37,8 +38,24 @@ export default function TechnologyDetailPage() {
   const { isWatching, toggleWatchlist } = useAppStore();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'news' | 'research' | 'skills' | 'resources'>('overview');
+  const [tech, setTech] = useState<Technology>(
+    () => technologies.find((t) => t.slug === slug) || technologies[0]
+  );
 
-  const tech = technologies.find((t) => t.slug === slug) || technologies[0];
+  React.useEffect(() => {
+    fetch('/api/trends')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.technologies && Array.isArray(data.technologies)) {
+          const found = data.technologies.find(
+            (t: Technology) => t.slug === slug || t.name.toLowerCase() === slug.toLowerCase()
+          );
+          if (found) setTech(found);
+        }
+      })
+      .catch(() => {});
+  }, [slug]);
+
   const watching = isWatching(tech.id);
 
   const relatedTechs = technologies.filter((t) => tech.relatedTechs?.includes(t.id) || t.category === tech.category && t.id !== tech.id).slice(0, 3);

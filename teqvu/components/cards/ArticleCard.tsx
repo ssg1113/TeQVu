@@ -37,6 +37,7 @@ export function ArticleCard({ article, featured = false }: ArticleCardProps) {
               src={article.imageUrl}
               alt={article.title}
               fill
+              unoptimized
               className="object-cover group-hover:scale-105 transition-transform duration-500"
               sizes="(max-width: 768px) 100vw, 33vw"
             />
@@ -80,9 +81,14 @@ export function ArticleCard({ article, featured = false }: ArticleCardProps) {
             {/* Source & Metadata */}
             <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-2.5">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  {article.source.name}
-                </span>
+                <a
+                  href={article.source?.url || article.url || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-slate-800 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 transition"
+                >
+                  {article.source?.name || 'Technical Source'}
+                </a>
                 <span className="text-slate-300 dark:text-slate-700">•</span>
                 <span className="flex items-center gap-1">
                   <Clock className="w-3 h-3" />
@@ -96,7 +102,14 @@ export function ArticleCard({ article, featured = false }: ArticleCardProps) {
 
             {/* Title */}
             <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-cyan-500 dark:group-hover:text-cyan-400 transition-colors line-clamp-2 leading-snug">
-              {article.title}
+              <a
+                href={article.url || article.source?.url || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline"
+              >
+                {article.title}
+              </a>
             </h3>
 
             {/* Summary */}
@@ -130,10 +143,10 @@ export function ArticleCard({ article, featured = false }: ArticleCardProps) {
             </button>
 
             <a
-              href={article.url}
+              href={article.url || article.source?.url || '#'}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition"
+              className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-cyan-400 transition"
             >
               <span>Source</span>
               <ExternalLink className="w-3.5 h-3.5" />

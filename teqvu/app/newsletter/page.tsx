@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Mail,
   ShieldCheck,
@@ -8,17 +8,76 @@ import {
   Clock,
   CheckCircle2,
   Calendar,
-  Sparkles,
-  Sliders,
   Send,
   Eye,
+  ExternalLink,
+  Loader2,
+  AlertCircle,
+  HelpCircle,
+  Flame,
+  BookOpen,
+  Info,
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { useAppStore } from '../../lib/store/useAppStore';
+import { articles as fallbackArticles } from '../../lib/mock-data/articles';
+import { technologies as fallbackTechs } from '../../lib/mock-data/technologies';
+import { researchPapers as fallbackResearch } from '../../lib/mock-data/research';
 
 export default function NewsletterPage() {
   const { newsletterPrefs, updateNewsletterPrefs, currentUser } = useAppStore();
-  const [testSent, setTestSent] = useState(false);
+
+  const [targetEmail, setTargetEmail] = useState(currentUser.email || 'alex.rivera@techpulse.dev');
+  const [isSending, setIsSending] = useState(false);
+  const [sendResult, setSendResult] = useState<{
+    success: boolean;
+    mode?: string;
+    deliveredTo?: string;
+    message?: string;
+    previewUrl?: string;
+    error?: string;
+  } | null>(null);
+
+  // Live preview items
+  const [previewArticle, setPreviewArticle] = useState(fallbackArticles[0]);
+  const [previewTech, setPreviewTech] = useState(fallbackTechs[0]);
+  const [previewPaper, setPreviewPaper] = useState(fallbackResearch[0]);
+
+  // Keep target email synced with currentUser if currentUser changes
+  useEffect(() => {
+    if (currentUser?.email) {
+      setTargetEmail(currentUser.email);
+    }
+  }, [currentUser?.email]);
+
+  // Load real-time items for the live preview mockup
+  useEffect(() => {
+    async function loadLivePreview() {
+      try {
+        const [newsRes, trendsRes, researchRes] = await Promise.allSettled([
+          fetch('/api/tech-news?limit=1'),
+          fetch('/api/trends?timeframe=7d'),
+          fetch('/api/research?limit=1'),
+        ]);
+
+        if (newsRes.status === 'fulfilled' && newsRes.value.ok) {
+          const d = await newsRes.value.json();
+          if (d.articles?.length > 0) setPreviewArticle(d.articles[0]);
+        }
+        if (trendsRes.status === 'fulfilled' && trendsRes.value.ok) {
+          const d = await trendsRes.value.json();
+          if (d.technologies?.length > 0) setPreviewTech(d.technologies[0]);
+        }
+        if (researchRes.status === 'fulfilled' && researchRes.value.ok) {
+          const d = await researchRes.value.json();
+          if (d.papers?.length > 0) setPreviewPaper(d.papers[0]);
+        }
+      } catch (e) {
+        console.warn('Could not load live preview items:', e);
+      }
+    }
+    loadLivePreview();
+  }, []);
 
   const categories = [
     'AI/ML',
@@ -40,9 +99,44 @@ export default function NewsletterPage() {
     updateNewsletterPrefs({ categories: updated });
   };
 
-  const handleSendTest = () => {
-    setTestSent(true);
-    setTimeout(() => setTestSent(false), 3000);
+  const handleSendTest = async () => {
+    setIsSending(true);
+    setSendResult(null);
+
+    try {
+      const res = await fetch('/api/newsletter/send-sample', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: targetEmail,
+          categories: newsletterPrefs.categories,
+          frequency: newsletterPrefs.frequency,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSendResult({
+          success: true,
+          mode: data.mode,
+          deliveredTo: data.deliveredTo,
+          message: data.message,
+          previewUrl: data.previewUrl,
+        });
+      } else {
+        setSendResult({
+          success: false,
+          error: data.error || 'Failed to dispatch sample email.',
+        });
+      }
+    } catch (err: any) {
+      setSendResult({
+        success: false,
+        error: err.message || 'Network error while attempting to dispatch email.',
+      });
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -58,7 +152,7 @@ export default function NewsletterPage() {
             Newsletter & Smart Alert Governance
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-3xl">
-            Control your digest frequency, topical filtering, and strict anti-spam thresholds. We never spam your inbox.
+            Control your digest frequency, topical filtering, and strict anti-spam thresholds. Send real-time sample previews on demand.
           </p>
         </div>
 
@@ -66,6 +160,39 @@ export default function NewsletterPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Controls Column (7 cols) */}
           <div className="lg:col-span-7 space-y-6">
+            {/* Target Email Selector Box */}
+            <div className="p-6 rounded-2xl bg-white dark:bg-[#0f1629] border border-cyan-500/30 dark:border-cyan-500/30 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-cyan-500" />
+                    Recipient Email Address
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Enter the email address where you want to receive your live briefings.
+                  </p>
+                </div>
+                {currentUser?.email && (
+                  <button
+                    onClick={() => setTargetEmail(currentUser.email)}
+                    className="text-[11px] font-mono text-cyan-500 hover:underline"
+                  >
+                    Use Account Email
+                  </button>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+                <input
+                  type="email"
+                  value={targetEmail}
+                  onChange={(e) => setTargetEmail(e.target.value)}
+                  placeholder="your-email@gmail.com"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                />
+              </div>
+            </div>
+
             {/* Frequency Selector */}
             <div className="p-6 rounded-2xl bg-white dark:bg-[#0f1629] border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
@@ -197,20 +324,82 @@ export default function NewsletterPage() {
               </div>
             </div>
 
-            {/* Test Email Button */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleSendTest}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 shadow-md shadow-cyan-500/20 transition"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>Send Sample Newsletter Preview</span>
-              </button>
-              {testSent && (
-                <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1 animate-fade-in font-mono">
-                  <CheckCircle2 className="w-4 h-4" />
-                  Sent test sample to {currentUser.email}
-                </span>
+            {/* Test Email Action Button & Feedback Card */}
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={handleSendTest}
+                  disabled={isSending || !targetEmail}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 shadow-lg shadow-cyan-500/25 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Compiling & Dispatching Live Brief...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>Send Sample Newsletter Preview</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Delivery Success / Status Box */}
+              {sendResult && (
+                <div
+                  className={`p-4 rounded-xl border text-xs space-y-2 animate-fade-in ${
+                    !sendResult.success
+                      ? 'bg-red-500/10 border-red-500/30 text-red-800 dark:text-red-200'
+                      : sendResult.mode === 'ethereal_preview'
+                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-800 dark:text-amber-200'
+                      : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-200'
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    {!sendResult.success ? (
+                      <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    ) : sendResult.mode === 'ethereal_preview' ? (
+                      <HelpCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                    )}
+                    <div className="space-y-1.5 w-full">
+                      <div className="font-bold text-sm">
+                        {!sendResult.success
+                          ? 'Dispatch Error'
+                          : sendResult.mode === 'ethereal_preview'
+                          ? `Simulated Web Preview (No Real Email Sent)`
+                          : `Live Email Delivered to ${sendResult.deliveredTo}`}
+                      </div>
+                      <p className="leading-relaxed opacity-90">{sendResult.message || sendResult.error}</p>
+
+                      {sendResult.success && sendResult.mode === 'resend' && (
+                        <div className="mt-2 p-2.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-900 dark:text-emerald-100 flex items-start gap-2 text-[11px]">
+                          <Info className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <strong>Check Gmail Spam or Promotions:</strong> Because Resend sends via its shared test domain (<code className="font-mono text-[10px]">onboarding@resend.dev</code>), Gmail often places this preview into your <strong>Spam / Junk</strong> folder or <strong>Promotions tab</strong>.
+                          </div>
+                        </div>
+                      )}
+
+                      {sendResult.previewUrl && (
+                        <div className="pt-2">
+                          <a
+                            href={sendResult.previewUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs transition shadow-sm"
+                          >
+                            <span>Open Sent Email in Web Mailbox</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -221,9 +410,11 @@ export default function NewsletterPage() {
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                 <span className="font-mono text-[10px] uppercase text-cyan-400 font-bold flex items-center gap-1.5">
                   <Eye className="w-3.5 h-3.5" />
-                  Live Rendered Email Preview
+                  Live Compiled Email Preview
                 </span>
-                <span className="text-[10px] font-mono text-slate-400">Next.js + Resend</span>
+                <span className="text-[10px] font-mono text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
+                  ● Real-Time Feed
+                </span>
               </div>
 
               {/* Email Content Container */}
@@ -238,56 +429,68 @@ export default function NewsletterPage() {
                       TeQVu Brief
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-slate-400">Issue #248</span>
+                  <span className="text-[10px] font-mono text-slate-400">
+                    {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
                 </div>
 
                 {/* Section 1: Top Developments */}
                 <div>
-                  <div className="text-[10px] font-mono uppercase text-purple-400 font-bold mb-1">
-                    1. Top Developments
+                  <div className="text-[10px] font-mono uppercase text-purple-400 font-bold mb-1 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                    1. Top Development &bull; {previewArticle.source.name.split(' ')[0]}
                   </div>
-                  <div className="font-bold text-slate-900 dark:text-slate-100 text-xs leading-snug">
-                    Anthropic Releases Claude 4 with 200K Context
+                  <div className="font-bold text-slate-900 dark:text-slate-100 text-xs leading-snug line-clamp-2">
+                    {previewArticle.title}
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                    Extended reasoning and autonomous tool use capabilities merged for production workflows.
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed line-clamp-2">
+                    {previewArticle.summary}
                   </p>
                 </div>
 
                 {/* Section 2: Emerging Technologies */}
                 <div>
-                  <div className="text-[10px] font-mono uppercase text-cyan-400 font-bold mb-1">
+                  <div className="text-[10px] font-mono uppercase text-cyan-400 font-bold mb-1 flex items-center gap-1">
+                    <Flame className="w-3 h-3 text-cyan-400" />
                     2. Emerging Signal Detected
                   </div>
-                  <div className="font-semibold text-slate-800 dark:text-slate-200">
-                    Rust Systems Drivers in Mainline Linux (+31%)
+                  <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                    <span>{previewTech.name}</span>
+                    <span className="text-emerald-500 font-mono text-[11px] font-bold">
+                      +{previewTech.growth}% Velocity
+                    </span>
                   </div>
-                  <span className="text-[10px] text-slate-400">38 independent sources confirmed</span>
+                  <p className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">
+                    {previewTech.description}
+                  </p>
                 </div>
 
                 {/* Section 3: Research Spotlight */}
                 <div>
-                  <div className="text-[10px] font-mono uppercase text-emerald-400 font-bold mb-1">
+                  <div className="text-[10px] font-mono uppercase text-emerald-400 font-bold mb-1 flex items-center gap-1">
+                    <BookOpen className="w-3 h-3 text-emerald-400" />
                     3. Research Worth Reading
                   </div>
-                  <div className="font-semibold text-slate-800 dark:text-slate-200">
-                    FlashAttention-3: Asynchronous Hardware Kernels
+                  <div className="font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">
+                    {previewPaper.title}
                   </div>
-                  <span className="text-[10px] text-slate-400">arXiv CS.LG • 890 citations</span>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {previewPaper.source} &bull; {previewPaper.authors[0] || 'Researchers'} et al.
+                  </span>
                 </div>
 
-                {/* Section 4: Watchlist summary */}
+                {/* Section 4: Target Recipient Notice */}
                 <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-[11px] font-mono text-slate-400">
-                  <span>Your Watchlist:</span>
-                  <span className="text-emerald-400 font-bold">5 techs active</span>
+                  <span>Delivering to:</span>
+                  <span className="text-cyan-400 font-bold truncate max-w-[170px]">{targetEmail}</span>
                 </div>
               </div>
 
               {/* Unsubscribe footer */}
               <div className="text-center pt-2 text-[10px] text-slate-400 space-y-1">
-                <div>You are receiving this because you subscribed to TeQVu.</div>
-                <div className="text-cyan-400 cursor-pointer hover:underline">
-                  Manage Preferences • 1-Click Unsubscribe
+                <div>You are receiving this sample because you triggered a preview in TeQVu.</div>
+                <div className="text-cyan-400 font-medium">
+                  Configured Frequency: <span className="capitalize">{newsletterPrefs.frequency}</span>
                 </div>
               </div>
             </div>
@@ -316,6 +519,13 @@ export default function NewsletterPage() {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {[
+                  {
+                    time: 'Today, Just now',
+                    reason: 'Sample Preview Triggered on Demand',
+                    subject: 'TeQVu Daily Brief: Real-Time Tech Intelligence',
+                    sources: 'Reuters · BBC · Digital Trends · arXiv',
+                    status: 'Dispatched',
+                  },
                   {
                     time: 'Today, 08:30 AM',
                     reason: 'Velocity > 100% threshold',

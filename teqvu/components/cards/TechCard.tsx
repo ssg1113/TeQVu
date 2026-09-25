@@ -80,26 +80,27 @@ export function TechCard({ tech, compact = false }: TechCardProps) {
     <div className="group relative flex flex-col justify-between p-5 bg-white dark:bg-[#0f1629] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl hover:border-cyan-500/50 dark:hover:border-cyan-500/50 hover:shadow-xl hover:shadow-cyan-500/5 transition-all duration-300">
       {/* Header */}
       <div>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                {tech.category}
-              </span>
-              <TrendBadge status={tech.status} />
-            </div>
-            <Link
-              href={`/technologies/${tech.slug}`}
-              className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-cyan-500 dark:group-hover:text-cyan-400 transition"
-            >
-              {tech.name}
-            </Link>
-          </div>
+        {/* Row 1: Category + status badges (own row, no button here) */}
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">
+            {tech.category}
+          </span>
+          <TrendBadge status={tech.status} />
+        </div>
+
+        {/* Row 2: Tech name + Follow button. Button is flex-shrink-0 so it never overflows. */}
+        <div className="flex items-start justify-between gap-2">
+          <Link
+            href={`/technologies/${tech.slug}`}
+            className="flex-1 min-w-0 text-lg font-bold text-slate-900 dark:text-white group-hover:text-cyan-500 dark:group-hover:text-cyan-400 transition leading-tight"
+          >
+            {tech.name}
+          </Link>
 
           <button
             onClick={() => toggleWatchlist(tech.id)}
             aria-label="Toggle watchlist"
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition ${
+            className={`flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition mt-0.5 ${
               watching
                 ? 'bg-cyan-500 text-white border-cyan-500 shadow-md shadow-cyan-500/30'
                 : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-cyan-500 hover:text-cyan-500 dark:hover:text-cyan-400'

@@ -1,16 +1,48 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Search, Compass, Filter, ArrowUpDown } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, Compass, Filter, ArrowUpDown, RefreshCw, Radio, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
-import { technologies } from '../../lib/mock-data/technologies';
+import { technologies as fallbackTechs } from '../../lib/mock-data/technologies';
 import { TechCard } from '../../components/cards/TechCard';
+import type { Technology } from '../../lib/types';
 
 export default function TechnologiesPage() {
+  const [techList, setTechList] = useState<Technology[]>(fallbackTechs);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [sortBy, setSortBy] = useState<'score' | 'growth' | 'mentions'>('score');
+  const [loading, setLoading] = useState(false);
+  const [isLive, setIsLive] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState('Just now');
+
+  const fetchLiveTechs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/trends');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.technologies && Array.isArray(data.technologies) && data.technologies.length > 0) {
+          setTechList(data.technologies);
+          setIsLive(true);
+          setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch live technologies, using cached index.', err);
+      setIsLive(false);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLiveTechs();
+    // Auto refresh every 1 hour
+    const interval = setInterval(fetchLiveTechs, 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchLiveTechs]);
 
   const categories = [
     'All',
@@ -26,7 +58,7 @@ export default function TechnologiesPage() {
 
   const statuses = ['All', 'emerging', 'rising', 'trending', 'stable'];
 
-  const filteredTechs = technologies
+  const filteredTechs = techList
     .filter((t) => {
       const matchCat = selectedCategory === 'All' || t.category.toLowerCase().includes(selectedCategory.toLowerCase());
       const matchStatus = selectedStatus === 'All' || t.status === selectedStatus;
@@ -47,17 +79,42 @@ export default function TechnologiesPage() {
     <DashboardLayout>
       <div className="space-y-8">
         {/* Header */}
-        <div className="pb-6 border-b border-slate-200/80 dark:border-slate-800/80">
-          <div className="flex items-center gap-2 text-xs font-mono text-cyan-500 font-semibold mb-1">
-            <Compass className="w-4 h-4" />
-            <span>Technology Index & Taxonomy</span>
+        <div className="pb-6 border-b border-slate-200/80 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-mono text-cyan-500 font-semibold mb-1">
+              <Compass className="w-4 h-4" />
+              <span>Live Technology Index & Taxonomy</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+              Technology Explorer
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Explore live tracked technologies, frameworks, runtimes, and open-source ecosystems with real-time velocity signals.
+            </p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-            Technology Explorer
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Explore 1,800+ tracked technologies, frameworks, runtimes, and protocols with verified velocity signals.
-          </p>
+
+          <div className="flex items-center gap-3">
+            {/* Live Feed Status */}
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-mono">
+              <Radio className="w-3.5 h-3.5 animate-pulse text-cyan-400" />
+              <span>{isLive ? 'Live Ecosystem Stream' : 'Cached Feed'}</span>
+              <span className="text-slate-500">• {lastUpdated}</span>
+            </div>
+
+            {/* Sync Button */}
+            <button
+              onClick={fetchLiveTechs}
+              disabled={loading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition disabled:opacity-50"
+            >
+              {loading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+              ) : (
+                <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
+              )}
+              <span>Sync</span>
+            </button>
+          </div>
         </div>
 
         {/* Filter Bar */}

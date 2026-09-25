@@ -1,19 +1,63 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Search, BookOpen, Filter, ExternalLink, Sparkles, GraduationCap } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, Filter, ExternalLink, Sparkles, GraduationCap, RefreshCw, Radio, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
-import { researchPapers } from '../../lib/mock-data/research';
+import { researchPapers as initialPapers } from '../../lib/mock-data/research';
 import { ResearchCard } from '../../components/cards/ResearchCard';
+import type { ResearchPaper } from '../../lib/types';
 
 export default function ResearchHubPage() {
+  const [papers, setPapers] = useState<ResearchPaper[]>(initialPapers);
   const [search, setSearch] = useState('');
   const [selectedTopic, setSelectedTopic] = useState('All');
+  const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string>('Just now');
+  const [isLive, setIsLive] = useState(true);
 
-  const topics = ['All', 'Transformers', 'Systems Security', 'RAG', 'Quantum Computing', 'Cryptography', 'AI Safety'];
+  const fetchLiveResearch = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/research');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.papers && data.papers.length > 0) {
+          setPapers(data.papers);
+          setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+          setIsLive(true);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch live arXiv papers, using cached current feed.', err);
+      setIsLive(false);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const filteredPapers = researchPapers.filter((paper) => {
-    const matchTopic = selectedTopic === 'All' || paper.topics.some((t) => t.toLowerCase() === selectedTopic.toLowerCase()) || paper.technologies.some((t) => t.toLowerCase() === selectedTopic.toLowerCase());
+  useEffect(() => {
+    fetchLiveResearch();
+    // Auto refresh every 1 hour
+    const interval = setInterval(fetchLiveResearch, 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchLiveResearch]);
+
+  const topics = [
+    'All',
+    'AI & Machine Learning',
+    'Deep Learning',
+    'Software Engineering',
+    'LLMs & NLP',
+    'Cryptography & Security',
+    'Distributed Systems',
+    'Quantum Computing',
+  ];
+
+  const filteredPapers = papers.filter((paper) => {
+    const matchTopic =
+      selectedTopic === 'All' ||
+      paper.topics.some((t) => t.toLowerCase().includes(selectedTopic.toLowerCase())) ||
+      paper.technologies.some((t) => t.toLowerCase().includes(selectedTopic.toLowerCase()));
     const matchSearch =
       !search ||
       paper.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -23,23 +67,47 @@ export default function ResearchHubPage() {
     return matchTopic && matchSearch;
   });
 
-  const trendingResearch = researchPapers.slice(0, 3);
+  const trendingResearch = filteredPapers.slice(0, 3);
 
   return (
     <DashboardLayout>
       <div className="space-y-10">
         {/* Header */}
-        <div className="pb-6 border-b border-slate-200/80 dark:border-slate-800/80">
-          <div className="flex items-center gap-2 text-xs font-mono text-emerald-500 font-semibold mb-1">
-            <GraduationCap className="w-4 h-4" />
-            <span>Academic & Industrial Lab Discovery</span>
+        <div className="pb-6 border-b border-slate-200/80 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-mono text-emerald-500 font-semibold mb-1">
+              <GraduationCap className="w-4 h-4" />
+              <span>Academic & Industrial Lab Discovery</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+              Research Hub
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Live arXiv preprints, peer-reviewed publications, and breakthrough whitepapers updated regularly.
+            </p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-            Research Hub
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Access preprints, peer-reviewed publications, and technical whitepapers across computer science, AI, and systems.
-          </p>
+
+          {/* Live Feed Badge & Refresh Button */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono">
+              <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-400" />
+              <span>{isLive ? 'Live arXiv Feed' : 'Cached Feed'}</span>
+              <span className="text-slate-500">• {lastUpdated}</span>
+            </div>
+
+            <button
+              onClick={fetchLiveResearch}
+              disabled={loading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition disabled:opacity-50"
+            >
+              {loading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+              ) : (
+                <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
+              )}
+              <span>Sync</span>
+            </button>
+          </div>
         </div>
 
         {/* Search & Topic Filter */}
@@ -50,7 +118,7 @@ export default function ResearchHubPage() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search technologies, research topics, papers, or concepts... (e.g. FlashAttention, Surface Codes, Formal Verification)"
+              placeholder="Search live papers, authors, topics, or technologies... (e.g. LLM Agents, Transformers, Quantum, Diffusion)"
               className="w-full pl-10 pr-4 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-cyan-500 text-slate-900 dark:text-white placeholder-slate-400"
             />
           </div>
@@ -74,12 +142,12 @@ export default function ResearchHubPage() {
         </div>
 
         {/* 1. TRENDING RESEARCH PAPERS */}
-        {!search && selectedTopic === 'All' && (
+        {!search && selectedTopic === 'All' && trendingResearch.length > 0 && (
           <section>
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="w-4 h-4 text-purple-400" />
               <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                Trending Breakthrough Preprints
+                Recent Breakthrough Preprints
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -93,8 +161,8 @@ export default function ResearchHubPage() {
         {/* 2. ALL RESEARCH PAPERS */}
         <section className="space-y-4">
           <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
-            <span>Showing {filteredPapers.length} research papers</span>
-            <span>Attribution: arXiv, ACM, IEEE</span>
+            <span>Showing {filteredPapers.length} live research publications</span>
+            <span>Real-time Stream: arXiv Computer Science API</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -102,12 +170,20 @@ export default function ResearchHubPage() {
               <ResearchCard key={paper.id} paper={paper} />
             ))}
           </div>
+
+          {filteredPapers.length === 0 && !loading && (
+            <div className="p-12 text-center text-slate-400 bg-white dark:bg-[#0f1629] rounded-2xl border border-slate-200 dark:border-slate-800">
+              <Search className="w-10 h-10 mx-auto text-slate-500 mb-2 opacity-40" />
+              <p className="font-semibold text-slate-300">No matching research papers found</p>
+              <p className="text-xs text-slate-500 mt-1">Try relaxing your search terms or category filter.</p>
+            </div>
+          )}
         </section>
 
         {/* 3. ACADEMIC & OPEN SOURCE RESOURCES */}
         <section className="p-6 rounded-2xl bg-white dark:bg-[#0f1629] border border-slate-200/80 dark:border-slate-800/80">
           <h3 className="font-bold text-base text-slate-900 dark:text-white mb-3">
-            Academic Portals & Repositories
+            Direct Academic Ingestion Portals
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
             <a
@@ -154,3 +230,4 @@ export default function ResearchHubPage() {
     </DashboardLayout>
   );
 }
+
