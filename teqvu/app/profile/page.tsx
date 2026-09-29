@@ -1,21 +1,33 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { User, Mail, Briefcase, Calendar, CheckCircle2, Shield, Eye, Bookmark, Save } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { useAppStore } from '../../lib/store/useAppStore';
 import { INTEREST_OPTIONS } from '../../lib/utils';
-import { technologies } from '../../lib/mock-data/technologies';
+import type { Technology } from '../../lib/types';
 
 export default function ProfilePage() {
   const { currentUser, updateUser, interests, toggleInterest, watchlistIds, bookmarkedIds } = useAppStore();
   const [name, setName] = useState(currentUser.name);
   const [occupation, setOccupation] = useState(currentUser.occupation);
   const [saved, setSaved] = useState(false);
+  const [techList, setTechList] = useState<Technology[]>([]);
+
+  useEffect(() => {
+    fetch('/api/trends')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.technologies && Array.isArray(d.technologies)) {
+          setTechList(d.technologies);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const occupations = ['Student', 'Software Engineer', 'Researcher', 'Academic', 'IT Professional', 'Other'];
-  const watchedTechs = technologies.filter((t) => watchlistIds.includes(t.id));
+  const watchedTechs = techList.filter((t) => watchlistIds.includes(t.id) || watchlistIds.includes(t.slug));
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import type { ResearchPaper } from '../../../lib/types';
-import { researchPapers as fallbackPapers } from '../../../lib/mock-data/research';
 
 // Fast XML text extractor helper
 function getTagValue(xml: string, tag: string): string {
@@ -146,13 +145,11 @@ export async function GET(request: Request) {
     console.error('Error fetching live arXiv research papers:', err);
     return NextResponse.json(
       {
-        success: true,
-        count: fallbackPapers.slice(0, maxResults).length,
-        timestamp: new Date().toISOString(),
-        source: 'Research Hub Cache',
-        papers: fallbackPapers.slice(0, maxResults),
+        success: false,
+        error: err.message,
+        papers: [],
       },
-      { status: 200 }
+      { status: 500 }
     );
   }
 }

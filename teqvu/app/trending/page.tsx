@@ -22,7 +22,6 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
-import { technologies as fallbackTechs } from '../../lib/mock-data/technologies';
 import { TrendBadge } from '../../components/ui/Badge';
 import { Sparkline } from '../../components/ui/Sparkline';
 import { formatGrowth, timeAgo } from '../../lib/utils';
@@ -63,7 +62,7 @@ export default function TrendingPage() {
   const [velocityMode, setVelocityMode] = useState<'rising' | 'falling'>('rising');
   const [sortColumn, setSortColumn] = useState<'rank' | 'score' | 'mentions' | 'growth'>('rank');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [allTechs, setAllTechs] = useState<Technology[]>(fallbackTechs);
+  const [allTechs, setAllTechs] = useState<Technology[]>([]);
   const [loadingTechs, setLoadingTechs] = useState(false);
   const [loadingNews, setLoadingNews] = useState(false);
   const [isLive, setIsLive] = useState(false);
@@ -81,14 +80,6 @@ export default function TrendingPage() {
         setIsLive(true);
         setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       } else {
-        const multipliers: Record<Timeframe, number> = {
-          '24h': 2.5, '7d': 1, '30d': 0.6, '3m': 0.35, '1y': 0.15,
-        };
-        const m = multipliers[tf] ?? 1;
-        setAllTechs(fallbackTechs.map((t) => ({
-          ...t,
-          growth: Math.round(t.growth * (t.growth < 0 ? Math.max(0.5, m) : m)),
-        })));
         setIsLive(false);
       }
     } catch {

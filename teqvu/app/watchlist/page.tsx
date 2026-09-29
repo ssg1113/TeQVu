@@ -1,19 +1,31 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Eye, Bell, BellOff, ArrowUpRight, ArrowDownRight, Trash2, Plus, TrendingUp } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
-import { technologies } from '../../lib/mock-data/technologies';
 import { TrendBadge } from '../../components/ui/Badge';
 import { Sparkline } from '../../components/ui/Sparkline';
 import { formatGrowth } from '../../lib/utils';
 import { useAppStore } from '../../lib/store/useAppStore';
+import type { Technology } from '../../lib/types';
 
 export default function WatchlistPage() {
   const { watchlistIds, toggleWatchlist } = useAppStore();
+  const [techList, setTechList] = useState<Technology[]>([]);
 
-  const watchedTechs = technologies.filter((t) => watchlistIds.includes(t.id));
+  useEffect(() => {
+    fetch('/api/trends')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.technologies && Array.isArray(data.technologies)) {
+          setTechList(data.technologies);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const watchedTechs = techList.filter((t) => watchlistIds.includes(t.id) || watchlistIds.includes(t.slug));
 
   return (
     <DashboardLayout>

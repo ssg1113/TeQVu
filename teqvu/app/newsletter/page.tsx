@@ -20,9 +20,6 @@ import {
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { useAppStore } from '../../lib/store/useAppStore';
-import { articles as fallbackArticles } from '../../lib/mock-data/articles';
-import { technologies as fallbackTechs } from '../../lib/mock-data/technologies';
-import { researchPapers as fallbackResearch } from '../../lib/mock-data/research';
 import { Logo } from '../../components/ui/Logo';
 
 export default function NewsletterPage() {
@@ -39,10 +36,23 @@ export default function NewsletterPage() {
     error?: string;
   } | null>(null);
 
-  // Live preview items
-  const [previewArticle, setPreviewArticle] = useState(fallbackArticles[0]);
-  const [previewTech, setPreviewTech] = useState(fallbackTechs[0]);
-  const [previewPaper, setPreviewPaper] = useState(fallbackResearch[0]);
+  // Live preview items initialized with live defaults
+  const [previewArticle, setPreviewArticle] = useState<any>({
+    title: 'Real-time Intelligence Pipeline Initialized',
+    summary: 'Connecting to live RSS tech news, arXiv preprints, and GitHub velocity feeds.',
+    source: { name: 'TeQVu Intelligence' },
+  });
+  const [previewTech, setPreviewTech] = useState<any>({
+    name: 'TypeScript & Next.js',
+    growth: 45,
+    mentions: 18400,
+    description: 'Enterprise React framework for modern server-rendered applications.',
+  });
+  const [previewPaper, setPreviewPaper] = useState<any>({
+    title: 'Large Language Models as Tool-Use Orchestrators',
+    authors: ['AI Research Lab'],
+    summary: 'Benchmarking autonomous multi-agent reasoning and tool-calling execution.',
+  });
 
   // Keep target email synced with currentUser if currentUser changes
   useEffect(() => {

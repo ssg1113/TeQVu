@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import type { Technology } from '../../../lib/types';
-import { technologies as fallbackTechs } from '../../../lib/mock-data/technologies';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
@@ -52,18 +51,10 @@ export async function GET(request: Request) {
         repos = data.items || [];
       }
     } catch (e) {
-      console.warn('GitHub search fetch error, falling back:', e);
+      console.warn('GitHub search fetch error:', e);
     }
 
     let liveTechs: Technology[] = [];
-    
-    // Always include tracked falling / sunset technologies from taxonomy
-    const fallingBase = fallbackTechs
-      .filter((t) => t.status === 'declining' || t.status === 'falling' || t.growth < 0)
-      .map((t) => ({
-        ...t,
-        growth: Math.round(t.growth * Math.max(0.5, growthMult)),
-      }));
 
     if (repos.length > 0) {
       const ghRisingTechs: Technology[] = repos.map((repo: any, index: number) => {
@@ -125,13 +116,7 @@ export async function GET(request: Request) {
         };
       });
 
-      // Combine both rising GitHub repos and tracked falling technologies
-      liveTechs = [...ghRisingTechs, ...fallingBase];
-    } else {
-      liveTechs = fallbackTechs.map((t) => ({
-        ...t,
-        growth: Math.round(t.growth * (t.growth < 0 ? Math.max(0.5, growthMult) : growthMult)),
-      }));
+      liveTechs = ghRisingTechs;
     }
 
     // Apply category filter

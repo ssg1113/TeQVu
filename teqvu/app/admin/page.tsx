@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Shield,
@@ -22,17 +22,58 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
-import { adminStats, processingJobs, sourcesList } from '../../lib/mock-data/sources';
-import { technologies } from '../../lib/mock-data/technologies';
 import { TrendBadge } from '../../components/ui/Badge';
 import { formatNumber } from '../../lib/utils';
 import { useAppStore } from '../../lib/store/useAppStore';
+import type { Technology, Source, ProcessingJob, AdminStats } from '../../lib/types';
+
+const ADMIN_STATS: AdminStats = {
+  activeUsers: 1420,
+  totalUsers: 3850,
+  articlesCollected: 1240,
+  sourcesCount: 8,
+  technologiesCount: 42,
+  emergingTrends: 17,
+  emailsSent: 890,
+  processingFailures: 1,
+};
+
+const PROCESSING_JOBS: ProcessingJob[] = [
+  { id: 'job-1', name: 'arXiv CS Research Ingestion', status: 'running', processedCount: 142, errorCount: 0, lastRun: '10m ago', nextRun: '20m', details: 'Polling CS.AI, CS.LG, CS.SE endpoints' },
+  { id: 'job-2', name: 'GitHub Trends Ingestion', status: 'completed', processedCount: 85, errorCount: 0, lastRun: '25m ago', nextRun: '35m', details: 'Ingesting stars > 500 repository signals' },
+  { id: 'job-3', name: 'Tech News RSS Pipeline', status: 'running', processedCount: 310, errorCount: 1, lastRun: '5m ago', nextRun: '25m', details: 'Ingesting Reuters, BBC, Google News' },
+  { id: 'job-4', name: 'Jobs & Skills Sync', status: 'completed', processedCount: 95, errorCount: 0, lastRun: '1h ago', nextRun: '1h', details: 'Aggregating Arbeitnow, Remotive, and Hacker News' },
+];
+
+const SOURCES_LIST: Source[] = [
+  { id: 'reuters', name: 'Reuters Technology', url: 'https://www.reuters.com/technology/', type: 'Global Wire', category: 'Tech News', trustScore: 10, status: 'active', articlesCount: 420, lastChecked: new Date().toISOString(), collectionFrequency: '30 minutes' },
+  { id: 'bbc', name: 'BBC Technology', url: 'https://www.bbc.com/news/technology', type: 'Public Broadcaster', category: 'Tech News', trustScore: 10, status: 'active', articlesCount: 380, lastChecked: new Date().toISOString(), collectionFrequency: '30 minutes' },
+  { id: 'googlenews', name: 'Google News Tech', url: 'https://news.google.com', type: 'Global Wire', category: 'Tech News', trustScore: 9, status: 'active', articlesCount: 650, lastChecked: new Date().toISOString(), collectionFrequency: '30 minutes' },
+  { id: 'digitaltrends', name: 'Digital Trends', url: 'https://www.digitaltrends.com', type: 'Tech News', category: 'Tech News', trustScore: 9, status: 'active', articlesCount: 290, lastChecked: new Date().toISOString(), collectionFrequency: '1 hour' },
+  { id: 'arxiv', name: 'arXiv.org Computer Science', url: 'https://arxiv.org', type: 'Research', category: 'Research', trustScore: 10, status: 'active', articlesCount: 1850, lastChecked: new Date().toISOString(), collectionFrequency: '1 hour' },
+  { id: 'github', name: 'GitHub Trending Repos', url: 'https://github.com/trending', type: 'Developer Tools', category: 'Developer Tools', trustScore: 10, status: 'active', articlesCount: 540, lastChecked: new Date().toISOString(), collectionFrequency: '1 hour' },
+  { id: 'arbeitnow', name: 'Arbeitnow Jobs Feed', url: 'https://www.arbeitnow.com', type: 'API', category: 'Jobs & Careers', trustScore: 9, status: 'active', articlesCount: 310, lastChecked: new Date().toISOString(), collectionFrequency: '2 hours' },
+  { id: 'remotive', name: 'Remotive Remote Jobs', url: 'https://remotive.com', type: 'API', category: 'Jobs & Careers', trustScore: 9, status: 'active', articlesCount: 280, lastChecked: new Date().toISOString(), collectionFrequency: '2 hours' },
+];
 
 export default function AdminDashboardPage() {
   const { currentUser, switchRole } = useAppStore();
   const [activeTab, setActiveTab] = useState<'monitoring' | 'sources' | 'trends'>('monitoring');
-  const [sources, setSources] = useState(sourcesList);
-  const [techList, setTechList] = useState(technologies);
+  const [sources, setSources] = useState(SOURCES_LIST);
+  const [techList, setTechList] = useState<Technology[]>([]);
+  const adminStats = ADMIN_STATS;
+  const processingJobs = PROCESSING_JOBS;
+
+  useEffect(() => {
+    fetch('/api/trends')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.technologies && Array.isArray(d.technologies)) {
+          setTechList(d.technologies);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const toggleSourceStatus = (id: string) => {
     setSources((prev) =>

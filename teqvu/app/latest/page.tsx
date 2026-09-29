@@ -3,14 +3,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Filter, Layers, ArrowUpDown, RefreshCw, Radio, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
-import { articles as initialArticles } from '../../lib/mock-data/articles';
-import { storyClusters } from '../../lib/mock-data/sources';
 import { ArticleCard } from '../../components/cards/ArticleCard';
-import { StoryClusterCard } from '../../components/cards/StoryClusterCard';
 import type { Article } from '../../lib/types';
 
 export default function LatestNewsPage() {
-  const [articlesList, setArticlesList] = useState<Article[]>(initialArticles);
+  const [articlesList, setArticlesList] = useState<Article[]>([]);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedSort, setSelectedSort] = useState<'newest' | 'discussed' | 'trending'>('newest');
@@ -67,17 +64,6 @@ export default function LatestNewsPage() {
       }
       return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
     });
-
-  const filteredClusters = storyClusters.filter((cluster) => {
-    const matchesCategory =
-      selectedCategory === 'All' || cluster.category.toLowerCase().includes(selectedCategory.toLowerCase());
-    const matchesSearch =
-      !search ||
-      cluster.title.toLowerCase().includes(search.toLowerCase()) ||
-      cluster.summary.toLowerCase().includes(search.toLowerCase()) ||
-      cluster.technologies.some((t) => t.toLowerCase().includes(search.toLowerCase()));
-    return matchesCategory && matchesSearch;
-  });
 
   return (
     <DashboardLayout>
@@ -171,23 +157,6 @@ export default function LatestNewsPage() {
             ))}
           </div>
         </div>
-
-        {/* Story Clusters Showcase */}
-        {filteredClusters.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-purple-500 animate-ping" />
-              <h2 className="text-xs font-mono uppercase tracking-wider text-purple-400 font-bold">
-                Clustered Breaking Coverage (Multi-Source Verified)
-              </h2>
-            </div>
-            <div className="space-y-4">
-              {filteredClusters.map((cluster) => (
-                <StoryClusterCard key={cluster.id} cluster={cluster} />
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Articles Grid */}
         <div className="space-y-4">

@@ -15,12 +15,11 @@ import {
   Flame,
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
-import { technologies as fallbackTechs } from '../../lib/mock-data/technologies';
 import { TechCard } from '../../components/cards/TechCard';
 import type { Technology } from '../../lib/types';
 
 export default function TechnologiesPage() {
-  const [techList, setTechList] = useState<Technology[]>(fallbackTechs);
+  const [techList, setTechList] = useState<Technology[]>([]);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');

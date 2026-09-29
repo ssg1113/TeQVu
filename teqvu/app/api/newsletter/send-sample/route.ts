@@ -3,9 +3,6 @@ import path from 'path';
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { Resend } from 'resend';
-import { articles as fallbackArticles } from '../../../../lib/mock-data/articles';
-import { technologies as fallbackTechs } from '../../../../lib/mock-data/technologies';
-import { researchPapers as fallbackResearch } from '../../../../lib/mock-data/research';
 
 export const dynamic = 'force-dynamic';
 
@@ -220,7 +217,7 @@ export async function POST(request: Request) {
       : ['AI/ML', 'Cloud', 'Cybersecurity'];
     const frequency = body.frequency || 'daily';
 
-    // 1. Gather Live Real-Time Data (or use fallbacks)
+    // 1. Gather Live Real-Time Data
     let liveArticles: any[] = [];
     try {
       const res = await fetch('http://127.0.0.1:3000/api/tech-news?limit=4', {
@@ -231,9 +228,8 @@ export async function POST(request: Request) {
         if (data.articles?.length > 0) liveArticles = data.articles;
       }
     } catch {
-      liveArticles = fallbackArticles.slice(0, 3);
+      liveArticles = [];
     }
-    if (liveArticles.length === 0) liveArticles = fallbackArticles.slice(0, 3);
 
     let liveTrends: any[] = [];
     try {
@@ -245,11 +241,10 @@ export async function POST(request: Request) {
         if (data.trends?.length > 0) liveTrends = data.trends.slice(0, 3);
       }
     } catch {
-      liveTrends = fallbackTechs.slice(0, 3);
+      liveTrends = [];
     }
-    if (liveTrends.length === 0) liveTrends = fallbackTechs.slice(0, 3);
 
-    let livePaper = fallbackResearch[0];
+    let livePaper: any = null;
     try {
       const res = await fetch('http://127.0.0.1:3000/api/research?limit=1', {
         signal: AbortSignal.timeout(4000),
@@ -259,7 +254,7 @@ export async function POST(request: Request) {
         if (data.papers?.length > 0) livePaper = data.papers[0];
       }
     } catch {
-      livePaper = fallbackResearch[0];
+      livePaper = null;
     }
 
     // 2. Generate HTML Content

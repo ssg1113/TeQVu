@@ -23,13 +23,9 @@ import { TechCard } from '../../components/cards/TechCard';
 import { ArticleCard } from '../../components/cards/ArticleCard';
 import { ResearchCard } from '../../components/cards/ResearchCard';
 import { Sparkline } from '../../components/ui/Sparkline';
-import { technologies as fallbackTechs } from '../../lib/mock-data/technologies';
-import { articles as fallbackArticles } from '../../lib/mock-data/articles';
-import { researchPapers as fallbackResearch } from '../../lib/mock-data/research';
-import { skills } from '../../lib/mock-data/skills';
 import { useAppStore } from '../../lib/store/useAppStore';
 import { formatGrowth } from '../../lib/utils';
-import type { Technology, Article, ResearchPaper } from '../../lib/types';
+import type { Technology, Article, ResearchPaper, Skill } from '../../lib/types';
 
 const INTEREST_CATEGORIES = [
   'All',
@@ -45,12 +41,13 @@ const INTEREST_CATEGORIES = [
 export default function HomePage() {
   const { currentUser, watchlistIds, interests } = useAppStore();
 
-  const [trendingTechs, setTrendingTechs] = useState<Technology[]>(fallbackTechs.slice(0, 4));
-  const [allTechs, setAllTechs] = useState<Technology[]>(fallbackTechs);
-  const [breakingNews, setBreakingNews] = useState<Article[]>(fallbackArticles.slice(0, 2));
-  const [forYouArticles, setForYouArticles] = useState<Article[]>(fallbackArticles.slice(2, 6));
-  const [allNews, setAllNews] = useState<Article[]>(fallbackArticles);
-  const [researchList, setResearchList] = useState<ResearchPaper[]>(fallbackResearch.slice(0, 2));
+  const [trendingTechs, setTrendingTechs] = useState<Technology[]>([]);
+  const [allTechs, setAllTechs] = useState<Technology[]>([]);
+  const [breakingNews, setBreakingNews] = useState<Article[]>([]);
+  const [forYouArticles, setForYouArticles] = useState<Article[]>([]);
+  const [allNews, setAllNews] = useState<Article[]>([]);
+  const [researchList, setResearchList] = useState<ResearchPaper[]>([]);
+  const [skillsList, setSkillsList] = useState<Skill[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
   const [isLoading, setIsLoading] = useState(false);
@@ -60,10 +57,11 @@ export default function HomePage() {
   const fetchDashboardData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [trendsRes, newsRes, researchRes] = await Promise.allSettled([
+      const [trendsRes, newsRes, researchRes, skillsRes] = await Promise.allSettled([
         fetch('/api/trends?timeframe=7d'),
         fetch('/api/tech-news?limit=25'),
         fetch('/api/research?limit=6'),
+        fetch('/api/jobs-skills?limit=8'),
       ]);
 
       // 1. Process Real-Time Trends (GitHub API)
@@ -109,6 +107,14 @@ export default function HomePage() {
         }
       }
 
+      // 4. Process Real-Time Skills (Jobs-Skills API)
+      if (skillsRes.status === 'fulfilled' && skillsRes.value.ok) {
+        const skillsData = await skillsRes.value.json();
+        if (Array.isArray(skillsData.skills) && skillsData.skills.length > 0) {
+          setSkillsList(skillsData.skills);
+        }
+      }
+
       setIsLive(true);
       setLastUpdated(
         new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -143,15 +149,14 @@ export default function HomePage() {
     }
   };
 
-  // Watchlist: combine allTechs and fallbackTechs to resolve watched IDs
+  // Watchlist: combine allTechs to resolve watched IDs
   const combinedTechMap = new Map<string, Technology>();
-  fallbackTechs.forEach((t) => combinedTechMap.set(t.id, t));
   allTechs.forEach((t) => combinedTechMap.set(t.id, t));
   const watchedTechs = watchlistIds
     .map((id) => combinedTechMap.get(id))
     .filter((t): t is Technology => Boolean(t));
 
-  const skillsToWatch = skills.slice(0, 4);
+  const skillsToWatch = skillsList.slice(0, 4);
 
   return (
     <DashboardLayout>
@@ -508,7 +513,7 @@ export default function HomePage() {
                     </div>
                     <div className="text-[11px] text-slate-400 mt-1">{skill.category}</div>
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {skill.relatedTechs.slice(0, 3).map((t, idx) => (
+                      {(skill.relatedTechs || []).slice(0, 3).map((t, idx) => (
                         <span
                           key={idx}
                           className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300"

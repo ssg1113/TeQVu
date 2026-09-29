@@ -1,17 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Bookmark, Folder, Layers, BookOpen, Trash2, Plus } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
-import { articles } from '../../lib/mock-data/articles';
-import { researchPapers } from '../../lib/mock-data/research';
 import { ArticleCard } from '../../components/cards/ArticleCard';
 import { ResearchCard } from '../../components/cards/ResearchCard';
 import { useAppStore } from '../../lib/store/useAppStore';
+import type { Article, ResearchPaper } from '../../lib/types';
 
 export default function BookmarksPage() {
   const { bookmarkedIds } = useAppStore();
+  const [articlesList, setArticlesList] = useState<Article[]>([]);
+  const [researchList, setResearchList] = useState<ResearchPaper[]>([]);
   const [selectedFolder, setSelectedFolder] = useState<string>('all');
   const [collections, setCollections] = useState([
     { id: 'all', name: 'All Saved Items', count: bookmarkedIds.length },
@@ -23,8 +24,22 @@ export default function BookmarksPage() {
   const [newFolderName, setNewFolderName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
-  const savedArticles = articles.filter((a) => bookmarkedIds.includes(a.id));
-  const savedResearch = researchPapers.filter((r) => bookmarkedIds.includes(r.id));
+  useEffect(() => {
+    Promise.allSettled([
+      fetch('/api/tech-news?limit=50').then((r) => r.json()),
+      fetch('/api/research?limit=30').then((r) => r.json()),
+    ]).then(([newsRes, resRes]) => {
+      if (newsRes.status === 'fulfilled' && newsRes.value?.articles) {
+        setArticlesList(newsRes.value.articles);
+      }
+      if (resRes.status === 'fulfilled' && resRes.value?.papers) {
+        setResearchList(resRes.value.papers);
+      }
+    });
+  }, []);
+
+  const savedArticles = articlesList.filter((a) => bookmarkedIds.includes(a.id));
+  const savedResearch = researchList.filter((r) => bookmarkedIds.includes(r.id));
 
   const handleAddCollection = (e: React.FormEvent) => {
     e.preventDefault();

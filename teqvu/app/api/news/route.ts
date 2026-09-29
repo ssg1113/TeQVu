@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { Article } from '../../../lib/types';
 import { extractSourceFromUrl } from '../../../lib/utils';
-import { articles as verifiedArticles } from '../../../lib/mock-data/articles';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 1800; // Refresh every 30 minutes
@@ -218,18 +217,8 @@ export async function GET(request: Request) {
       });
     }
 
-    // Merge verified benchmark articles with live ingested stories
-    const combinedArticles = [...verifiedArticles];
-    const seenUrls = new Set(verifiedArticles.map((a) => a.url.toLowerCase()));
-
-    for (const art of liveArticles) {
-      if (!seenUrls.has(art.url.toLowerCase())) {
-        seenUrls.add(art.url.toLowerCase());
-        combinedArticles.push(art);
-      }
-    }
-
-    // Sort by publication time (newest first)
+    // Sort live ingested stories by publication time (newest first)
+    const combinedArticles = [...liveArticles];
     combinedArticles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
     // Filter by category if requested
@@ -250,9 +239,9 @@ export async function GET(request: Request) {
       {
         success: false,
         error: err.message || 'Failed to fetch live tech news',
-        articles: verifiedArticles.slice(0, limit),
+        articles: [],
       },
-      { status: 200 }
+      { status: 500 }
     );
   }
 }

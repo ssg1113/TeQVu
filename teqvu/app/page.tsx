@@ -24,21 +24,15 @@ import {
   AlertTriangle,
   ArrowDownRight,
 } from 'lucide-react';
-import { technologies as fallbackTechs } from '../lib/mock-data/technologies';
-import { articles as fallbackArticles } from '../lib/mock-data/articles';
-import { researchPapers as fallbackResearch } from '../lib/mock-data/research';
-import { skills, careerPaths, risingSkills, fallingSkills } from '../lib/mock-data/skills';
-import { storyClusters } from '../lib/mock-data/sources';
 import { TechCard } from '../components/cards/TechCard';
 import { ArticleCard } from '../components/cards/ArticleCard';
 import { ResearchCard } from '../components/cards/ResearchCard';
-import { StoryClusterCard } from '../components/cards/StoryClusterCard';
 import { Badge } from '../components/ui/Badge';
 import { Sparkline } from '../components/ui/Sparkline';
 import { Logo } from '../components/ui/Logo';
 import { INTEREST_OPTIONS, timeAgo } from '../lib/utils';
 import { useAppStore } from '../lib/store/useAppStore';
-import type { Technology, Article, ResearchPaper } from '../lib/types';
+import type { Technology, Article, ResearchPaper, Skill, CareerPath } from '../lib/types';
 
 const LIVE_SOURCES = [
   { id: 'reuters', name: 'Reuters Technology', trustScore: 10, type: 'Global Wire', badge: 'Live RSS' },
@@ -49,14 +43,63 @@ const LIVE_SOURCES = [
   { id: 'github', name: 'GitHub Trends', trustScore: 9, type: 'Open-Source Repos', badge: 'Live Velocity' },
 ];
 
+const DEFAULT_TOP_TREND: Technology = {
+  id: 'tech-featured',
+  slug: 'deepseek-v3',
+  name: 'DeepSeek-V3',
+  category: 'AI/ML',
+  description: 'Open-weights mixture-of-experts model scaling enterprise inference efficiency.',
+  trendScore: 98,
+  mentions: 14500,
+  sources: 18,
+  growth: 84,
+  status: 'rising',
+  firstDetected: '2026-01-01',
+  lastUpdated: '2026-03-29',
+  sparkline: [40, 52, 60, 71, 80, 85, 98],
+  tags: ['LLM', 'Inference', 'OpenWeights'],
+  relatedTechs: [],
+  followersCount: 1200,
+};
+
+const DEFAULT_TOP_NEWS: Article = {
+  id: 'news-featured',
+  title: 'Anthropic Unveils Next-Gen Claude Multi-Agent Automation Framework',
+  summary: 'A new architecture enabling coordinated autonomous developer agents across enterprise stacks.',
+  url: 'https://news.google.com',
+  publishedAt: new Date().toISOString(),
+  source: { id: 'reuters', name: 'Reuters Technology', url: 'https://reuters.com', type: 'Global Wire', category: 'Tech News', trustScore: 10, status: 'active', articlesCount: 100, lastChecked: new Date().toISOString(), collectionFrequency: '30m' },
+  category: 'AI/ML',
+  technologies: ['Claude', 'Multi-Agent', 'LLMs'],
+  readingTime: 4,
+  isBreaking: true,
+  discussCount: 88,
+};
+
+const DEFAULT_TOP_PAPER: ResearchPaper = {
+  id: 'paper-featured',
+  title: 'Direct Preference Optimization for Reasoning Models: Latent-Space Self-Correction',
+  summary: 'Investigating internal mechanisms of self-verification and error recovery in reasoning-oriented LLMs.',
+  authors: ['Dr. Elena Rostova', 'Wei Zhang', 'Julian Vance'],
+  publishedAt: new Date().toISOString().split('T')[0],
+  source: 'arXiv.org',
+  sourceUrl: 'https://arxiv.org',
+  topics: ['cs.AI', 'cs.LG', 'Reasoning'],
+  technologies: ['LLM', 'Inference'],
+  citations: 42,
+};
+
 export default function LandingPage() {
   const { interests, toggleInterest } = useAppStore();
 
-  const [allTrendingTech, setAllTrendingTech] = useState<Technology[]>(fallbackTechs);
+  const [allTrendingTech, setAllTrendingTech] = useState<Technology[]>([]);
   const [trendingDirectionTab, setTrendingDirectionTab] = useState<'all' | 'rising' | 'falling'>('all');
+  const [latestArticles, setLatestArticles] = useState<Article[]>([]);
+  const [featuredResearch, setFeaturedResearch] = useState<ResearchPaper[]>([]);
+  const [careerPaths, setCareerPaths] = useState<CareerPath[]>([]);
+  const [risingSkills, setRisingSkills] = useState<Skill[]>([]);
+  const [fallingSkills, setFallingSkills] = useState<Skill[]>([]);
   const [skillsDirectionTab, setSkillsDirectionTab] = useState<'rising' | 'falling'>('rising');
-  const [latestArticles, setLatestArticles] = useState<Article[]>(fallbackArticles.slice(0, 4));
-  const [featuredResearch, setFeaturedResearch] = useState<ResearchPaper[]>(fallbackResearch.slice(0, 3));
   const [isLive, setIsLive] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
 
@@ -65,10 +108,11 @@ export default function LandingPage() {
 
     async function loadRealTimeData() {
       try {
-        const [trendsRes, newsRes, researchRes] = await Promise.allSettled([
+        const [trendsRes, newsRes, researchRes, jobsRes] = await Promise.allSettled([
           fetch('/api/trends?timeframe=7d'),
           fetch('/api/tech-news?limit=6'),
           fetch('/api/research?limit=3'),
+          fetch('/api/jobs-skills?limit=10'),
         ]);
 
         if (!isMounted) return;
@@ -94,6 +138,23 @@ export default function LandingPage() {
           }
         }
 
+        if (jobsRes.status === 'fulfilled' && jobsRes.value.ok) {
+          const jobsData = await jobsRes.value.json();
+          if (Array.isArray(jobsData.careerPaths)) {
+            setCareerPaths(jobsData.careerPaths);
+          }
+          if (Array.isArray(jobsData.risingSkills)) {
+            setRisingSkills(jobsData.risingSkills);
+          } else if (Array.isArray(jobsData.skills)) {
+            setRisingSkills(jobsData.skills.filter((s: Skill) => s.trendDirection === 'rising'));
+          }
+          if (Array.isArray(jobsData.fallingSkills)) {
+            setFallingSkills(jobsData.fallingSkills);
+          } else if (Array.isArray(jobsData.skills)) {
+            setFallingSkills(jobsData.skills.filter((s: Skill) => s.trendDirection === 'falling'));
+          }
+        }
+
         setIsLive(true);
         setLastSync(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       } catch (err) {
@@ -116,9 +177,9 @@ export default function LandingPage() {
     })
     .slice(0, 6);
 
-  const topTrend = allTrendingTech[0] || fallbackTechs[0];
-  const topNews = latestArticles[0] || fallbackArticles[0];
-  const topPaper = featuredResearch[0] || fallbackResearch[0];
+  const topTrend = allTrendingTech[0] || DEFAULT_TOP_TREND;
+  const topNews = latestArticles[0] || DEFAULT_TOP_NEWS;
+  const topPaper = featuredResearch[0] || DEFAULT_TOP_PAPER;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -389,13 +450,6 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          {/* Clustered story highlight */}
-          {storyClusters.length > 0 && (
-            <div className="mb-8">
-              <StoryClusterCard cluster={storyClusters[0]} />
-            </div>
-          )}
-
           {/* Real-time article grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {latestArticles.map((article) => (
@@ -627,7 +681,7 @@ export default function LandingPage() {
                       Critical Skills:
                     </div>
                     <div className="flex flex-wrap gap-1">
-                      {path.skills.slice(0, 3).map((s, i) => (
+                      {(path.skills || []).slice(0, 3).map((s, i) => (
                         <span
                           key={i}
                           className="px-2 py-0.5 rounded-md text-[11px] bg-slate-100 dark:bg-slate-800/70 text-slate-600 dark:text-slate-300 font-mono"
@@ -747,7 +801,7 @@ export default function LandingPage() {
                           <div>
                             <span className="text-[10px] font-mono uppercase text-slate-400 tracking-wider block">Related Stacks:</span>
                             <div className="flex flex-wrap gap-1 mt-1">
-                              {skill.relatedTechs.map((t, i) => (
+                              {(skill.relatedTechs || []).map((t, i) => (
                                 <span key={i} className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono">
                                   {t}
                                 </span>
@@ -757,7 +811,7 @@ export default function LandingPage() {
                           <div>
                             <span className="text-[10px] font-mono uppercase text-slate-400 tracking-wider block">Hiring Roles:</span>
                             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
-                              {skill.roles.join(' • ')}
+                              {(skill.roles || []).join(' • ')}
                             </div>
                           </div>
                         </div>

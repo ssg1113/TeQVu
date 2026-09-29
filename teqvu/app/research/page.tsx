@@ -3,12 +3,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Filter, ExternalLink, Sparkles, GraduationCap, RefreshCw, Radio, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
-import { researchPapers as initialPapers } from '../../lib/mock-data/research';
 import { ResearchCard } from '../../components/cards/ResearchCard';
 import type { ResearchPaper } from '../../lib/types';
 
 export default function ResearchHubPage() {
-  const [papers, setPapers] = useState<ResearchPaper[]>(initialPapers);
+  const [papers, setPapers] = useState<ResearchPaper[]>([]);
   const [search, setSearch] = useState('');
   const [selectedTopic, setSelectedTopic] = useState('All');
   const [loading, setLoading] = useState(false);

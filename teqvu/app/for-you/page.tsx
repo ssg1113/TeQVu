@@ -4,8 +4,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Sparkles, Compass, CheckCircle2, SlidersHorizontal, RefreshCw, Radio, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
-import { articles as initialArticles } from '../../lib/mock-data/articles';
-import { technologies as initialTechs } from '../../lib/mock-data/technologies';
 import { ArticleCard } from '../../components/cards/ArticleCard';
 import { TechCard } from '../../components/cards/TechCard';
 import { useAppStore } from '../../lib/store/useAppStore';
@@ -13,8 +11,8 @@ import type { Article, Technology } from '../../lib/types';
 
 export default function ForYouPage() {
   const { interests, watchlistIds } = useAppStore();
-  const [articlesList, setArticlesList] = useState<Article[]>(initialArticles);
-  const [techList, setTechList] = useState<Technology[]>(initialTechs);
+  const [articlesList, setArticlesList] = useState<Article[]>([]);
+  const [techList, setTechList] = useState<Technology[]>([]);
   const [loading, setLoading] = useState(false);
   const [isLive, setIsLive] = useState(false);
   const [lastUpdated, setLastUpdated] = useState('Just now');
@@ -30,6 +28,9 @@ export default function ForYouPage() {
       if (newsRes?.success && Array.isArray(newsRes.articles) && newsRes.articles.length > 0) {
         setArticlesList(newsRes.articles);
         setIsLive(true);
+      }
+      if (trendsRes?.success && Array.isArray(trendsRes.technologies) && trendsRes.technologies.length > 0) {
+        setTechList(trendsRes.technologies);
       }
       setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } catch (err) {
