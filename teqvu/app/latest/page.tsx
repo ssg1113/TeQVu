@@ -68,6 +68,17 @@ export default function LatestNewsPage() {
       return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
     });
 
+  const filteredClusters = storyClusters.filter((cluster) => {
+    const matchesCategory =
+      selectedCategory === 'All' || cluster.category.toLowerCase().includes(selectedCategory.toLowerCase());
+    const matchesSearch =
+      !search ||
+      cluster.title.toLowerCase().includes(search.toLowerCase()) ||
+      cluster.summary.toLowerCase().includes(search.toLowerCase()) ||
+      cluster.technologies.some((t) => t.toLowerCase().includes(search.toLowerCase()));
+    return matchesCategory && matchesSearch;
+  });
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -162,7 +173,7 @@ export default function LatestNewsPage() {
         </div>
 
         {/* Story Clusters Showcase */}
-        {selectedCategory === 'All' && !search && storyClusters.length > 0 && (
+        {filteredClusters.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-purple-500 animate-ping" />
@@ -171,7 +182,7 @@ export default function LatestNewsPage() {
               </h2>
             </div>
             <div className="space-y-4">
-              {storyClusters.map((cluster) => (
+              {filteredClusters.map((cluster) => (
                 <StoryClusterCard key={cluster.id} cluster={cluster} />
               ))}
             </div>

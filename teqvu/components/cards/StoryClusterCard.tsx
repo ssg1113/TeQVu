@@ -65,7 +65,7 @@ export function StoryClusterCard({ cluster }: StoryClusterCardProps) {
           onClick={() => setExpanded(!expanded)}
           className="inline-flex items-center gap-1 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-500 transition"
         >
-          <span>{expanded ? 'Collapse Sources' : `View All ${cluster.sourceCount} Sources`}</span>
+          <span>{expanded ? 'Collapse Sources' : `View All ${cluster.articles?.length || cluster.sourceCount} Outlets`}</span>
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
       </div>
@@ -73,25 +73,41 @@ export function StoryClusterCard({ cluster }: StoryClusterCardProps) {
       {/* Expanded Sources List */}
       {expanded && (
         <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/60 space-y-2.5 animate-slide-up">
-          <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400">
-            Independent Outlets & Reporting:
+          <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-slate-400">
+            <span>Independent Outlets & Reporting:</span>
+            <span>{cluster.articles.length} Cross-Verified Sources</span>
           </div>
           {cluster.articles.map((art) => (
             <div
               key={art.id}
-              className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/50 text-xs"
+              className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/50 text-xs hover:border-purple-500/30 transition group"
             >
               <div className="flex-1 pr-3">
-                <span className="font-semibold text-slate-900 dark:text-slate-200 line-clamp-1">
+                <a
+                  href={art.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-slate-900 dark:text-slate-200 group-hover:text-cyan-500 dark:group-hover:text-cyan-400 transition-colors line-clamp-1"
+                >
                   {art.title}
-                </span>
-                <span className="text-[11px] text-slate-400">{art.source.name} • {timeAgo(art.publishedAt)}</span>
+                </a>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="font-medium text-slate-700 dark:text-slate-300">{art.source.name}</span>
+                  {art.source.type && (
+                    <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                      {art.source.type}
+                    </span>
+                  )}
+                  <span className="text-slate-400">•</span>
+                  <span className="text-[11px] text-slate-400">{timeAgo(art.publishedAt)}</span>
+                </div>
               </div>
               <a
                 href={art.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 transition"
+                title="Open Source Article"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
