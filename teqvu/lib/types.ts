@@ -1,6 +1,6 @@
 // Types for TeQVu platform
 
-export type TrendStatus = 'emerging' | 'rising' | 'trending' | 'stable' | 'declining';
+export type TrendStatus = 'emerging' | 'rising' | 'trending' | 'stable' | 'declining' | 'falling';
 
 export type TechCategory =
   | 'Languages'
@@ -28,7 +28,7 @@ export interface Technology {
   trendScore: number;       // 0–100
   mentions: number;
   sources: number;
-  growth: number;           // percentage e.g. +31
+  growth: number;           // percentage e.g. +31 or -38
   status: TrendStatus;
   firstDetected: string;    // ISO date
   lastUpdated: string;
@@ -39,6 +39,9 @@ export interface Technology {
   website?: string;
   github?: string;
   whyTrending?: string;
+  declineReason?: string;   // Explanation of why this tech is falling
+  replacedBy?: string[];    // Modern technologies superseding this one
+  migrationGuidance?: string;
   followersCount: number;
 }
 
@@ -103,11 +106,14 @@ export interface Skill {
   id: string;
   name: string;
   category: string;
-  demand: 'Very High' | 'High' | 'Medium' | 'Low';
-  growth: number;
+  demand: 'Very High' | 'High' | 'Medium' | 'Low' | 'Declining' | 'Cooling' | 'Sunset';
+  growth: number; // Positive (rising) or Negative (falling e.g. -45)
+  trendDirection?: 'rising' | 'falling';
   relatedTechs: string[];
   roles: string[];
   activeJobsCount?: number;
+  declineReason?: string;
+  replacedBy?: string[];
 }
 
 export interface CareerPath {
@@ -136,6 +142,7 @@ export interface JobPosting {
   category: string;
   source: string;
   descriptionSnippet?: string;
+  marketType?: 'emerging' | 'standard' | 'legacy-migration';
 }
 
 export interface BookmarkCollection {

@@ -230,6 +230,93 @@ const SKILL_DEFINITIONS = [
     roles: ['Distributed Systems Engineer', 'Cloud Architect', 'Go Backend Lead'],
     relatedTechs: ['Go', 'gRPC', 'Kafka', 'Docker'],
     baseGrowth: 65,
+    trendDirection: 'rising',
+  },
+
+  // Falling & Cooling Skills (Sunset & Legacy Migration Radar)
+  {
+    id: 'skill-falling-1',
+    name: 'Legacy jQuery & Direct DOM Scripting',
+    category: 'Frontend Development',
+    keywords: ['jquery', 'dom manipulation', 'legacy frontend', 'vanilla dom'],
+    roles: ['Legacy Web Maintainer', 'WordPress Integrator'],
+    relatedTechs: ['jQuery', 'DOM API', 'HTML5'],
+    baseGrowth: -48,
+    trendDirection: 'falling',
+    declineReason: 'Native modern browser APIs and reactive component frameworks render direct DOM mutation obsolete.',
+    replacedBy: ['React 19', 'TypeScript', 'Modern Web APIs'],
+  },
+  {
+    id: 'skill-falling-2',
+    name: 'AngularJS 1.x Architecture & Digest Cycles',
+    category: 'Frontend Development',
+    keywords: ['angularjs', 'angular.js', 'angular 1', 'bower', '$scope'],
+    roles: ['Enterprise Migration Specialist', 'Legacy Frontend Dev'],
+    relatedTechs: ['AngularJS', 'Bower', 'Gulp'],
+    baseGrowth: -59,
+    trendDirection: 'falling',
+    declineReason: 'Official Google EOL passed; enterprise maintenance overhead and unpatched CVE exposure.',
+    replacedBy: ['Modern Angular (v17+)', 'Next.js App Router', 'Vue 3'],
+  },
+  {
+    id: 'skill-falling-3',
+    name: 'Objective-C iOS App Maintenance',
+    category: 'Mobile & Systems',
+    keywords: ['objective-c', 'objc', 'cocoapods', 'legacy ios'],
+    roles: ['Legacy iOS Maintenance Developer'],
+    relatedTechs: ['Objective-C', 'CocoaPods', 'Xcode'],
+    baseGrowth: -44,
+    trendDirection: 'falling',
+    declineReason: 'Apple platform development has transitioned 90%+ to Swift and SwiftUI; modern Apple SDKs mandate Swift.',
+    replacedBy: ['Swift', 'SwiftUI', 'Kotlin Multiplatform'],
+  },
+  {
+    id: 'skill-falling-4',
+    name: 'SOAP & XML Web Services Protocol',
+    category: 'Backend Development',
+    keywords: ['soap', 'wsdl', 'xml web services', 'apache axis'],
+    roles: ['Enterprise Integration Engineer'],
+    relatedTechs: ['SOAP', 'WSDL', 'XML', 'Apache Axis'],
+    baseGrowth: -52,
+    trendDirection: 'falling',
+    declineReason: 'Heavy XML bandwidth overhead replaced by lightweight OpenAPI REST, GraphQL, and binary gRPC.',
+    replacedBy: ['RESTful APIs', 'gRPC', 'GraphQL'],
+  },
+  {
+    id: 'skill-falling-5',
+    name: 'Cordova & PhoneGap Hybrid Mobile Wrappers',
+    category: 'Mobile & Systems',
+    keywords: ['cordova', 'phonegap', 'hybrid mobile', 'webview app'],
+    roles: ['Hybrid Mobile Developer'],
+    relatedTechs: ['Cordova', 'PhoneGap', 'WebView'],
+    baseGrowth: -50,
+    trendDirection: 'falling',
+    declineReason: 'WebView wrappers suffer from latency and jank compared to compiled native platforms like React Native and Flutter.',
+    replacedBy: ['React Native', 'Flutter', 'Capacitor'],
+  },
+  {
+    id: 'skill-falling-6',
+    name: 'Procedural PHP 5.x & Monolithic Scripting',
+    category: 'Backend Development',
+    keywords: ['php 5', 'php5', 'procedural php', 'legacy lamp'],
+    roles: ['Legacy CMS Webmaster'],
+    relatedTechs: ['PHP 5', 'MySQL 5.6', 'Apache'],
+    baseGrowth: -36,
+    trendDirection: 'falling',
+    declineReason: 'Unpatched security risks, absence of static type safety, and absent async runtime capabilities.',
+    replacedBy: ['Modern PHP 8.3 / Laravel', 'Node.js', 'Go'],
+  },
+  {
+    id: 'skill-falling-7',
+    name: 'Apache Ant & XML Build Scripting',
+    category: 'DevOps & Platform Engineering',
+    keywords: ['apache ant', 'ant build', 'build.xml', 'ivy'],
+    roles: ['Legacy Build Engineer'],
+    relatedTechs: ['Apache Ant', 'XML', 'Ivy'],
+    baseGrowth: -62,
+    trendDirection: 'falling',
+    declineReason: 'Procedural XML pipelines have been completely replaced by declarative build systems, Gradle, and modern CI/CD.',
+    replacedBy: ['GitHub Actions', 'Gradle', 'Docker'],
   },
 ];
 
@@ -243,6 +330,8 @@ interface CachedData {
   remotePercentage: number;
   topHiringTrack: string;
   topSkill: string;
+  fastestDecliningSkill: string;
+  decliningSkillsCount: number;
 }
 
 let inMemoryCache: CachedData | null = null;
@@ -410,18 +499,26 @@ export async function GET(request: Request) {
         });
 
         // Compute live skills demand & counts purely from real postings
-        liveSkills = SKILL_DEFINITIONS.map((def) => {
+        liveSkills = SKILL_DEFINITIONS.map((def: any) => {
           let matchCount = 0;
           processedJobs.forEach((j) => {
             const text = `${j.title} ${(j.tags || []).join(' ')} ${j.descriptionSnippet || ''}`.toLowerCase();
-            if (def.keywords.some((kw) => text.includes(kw))) {
+            if (def.keywords.some((kw: string) => text.includes(kw))) {
               matchCount++;
             }
           });
 
-          const demand: 'Very High' | 'High' | 'Medium' | 'Low' =
-            matchCount >= 20 ? 'Very High' : matchCount >= 8 ? 'High' : matchCount >= 2 ? 'Medium' : 'Low';
-          const growth = Math.round(def.baseGrowth + Math.min(45, matchCount * 0.5));
+          const isFalling = def.trendDirection === 'falling' || def.baseGrowth < 0;
+          let demand: any;
+          let growth: number;
+
+          if (isFalling) {
+            demand = matchCount <= 2 ? 'Sunset' : matchCount <= 6 ? 'Declining' : 'Cooling';
+            growth = Math.round(def.baseGrowth - Math.max(0, 5 - matchCount));
+          } else {
+            demand = matchCount >= 20 ? 'Very High' : matchCount >= 8 ? 'High' : matchCount >= 2 ? 'Medium' : 'Low';
+            growth = Math.round(def.baseGrowth + Math.min(45, matchCount * 0.5));
+          }
 
           return {
             id: def.id,
@@ -429,11 +526,20 @@ export async function GET(request: Request) {
             category: def.category,
             demand,
             growth,
+            trendDirection: (isFalling ? 'falling' : 'rising') as 'falling' | 'rising',
             roles: def.roles,
             relatedTechs: def.relatedTechs,
             activeJobsCount: matchCount,
+            declineReason: def.declineReason,
+            replacedBy: def.replacedBy,
           };
-        }).sort((a, b) => (b.activeJobsCount || 0) - (a.activeJobsCount || 0));
+        }).sort((a, b) => {
+          // Sort rising skills first by activeJobsCount, then falling skills
+          if (a.trendDirection !== b.trendDirection) {
+            return a.trendDirection === 'rising' ? -1 : 1;
+          }
+          return (b.activeJobsCount || 0) - (a.activeJobsCount || 0);
+        });
 
         // Compute career paths with real-time active job counts and dynamically extracted hiring companies
         liveCareerPaths = CAREER_PATHS_DEFINITIONS.map((cp) => {
@@ -464,7 +570,15 @@ export async function GET(request: Request) {
 
         const sortedTracks = [...liveCareerPaths].sort((a, b) => (b.activeJobsCount || 0) - (a.activeJobsCount || 0));
         topHiringTrack = sortedTracks[0]?.name || 'Full Stack & AI';
-        topSkill = liveSkills[0]?.name || 'Agentic Workflow Orchestration';
+        
+        const risingList = liveSkills.filter((s) => s.trendDirection === 'rising').sort((a, b) => b.growth - a.growth);
+        const fallingList = liveSkills.filter((s) => s.trendDirection === 'falling').sort((a, b) => a.growth - b.growth);
+
+        topSkill = risingList[0]?.name || 'Agentic Workflow Orchestration';
+        const fastestDecliningSkill = fallingList[0]
+          ? `${fallingList[0].name} (${fallingList[0].growth}%)`
+          : 'Legacy Ant Build Scripting (-62%)';
+        const decliningSkillsCount = fallingList.length;
 
         // Update in-memory cache
         inMemoryCache = {
@@ -476,6 +590,8 @@ export async function GET(request: Request) {
           remotePercentage,
           topHiringTrack,
           topSkill,
+          fastestDecliningSkill,
+          decliningSkillsCount,
         };
       }
     }
@@ -489,6 +605,9 @@ export async function GET(request: Request) {
       filteredJobs = filteredJobs.filter((j) => j.isRemote);
     }
 
+    const risingSkills = liveSkills.filter((s) => s.trendDirection === 'rising');
+    const fallingSkills = liveSkills.filter((s) => s.trendDirection === 'falling');
+
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
@@ -499,8 +618,12 @@ export async function GET(request: Request) {
         remotePercentage,
         topHiringTrack,
         topSkill,
+        fastestDecliningSkill: inMemoryCache?.fastestDecliningSkill || 'AngularJS 1.x (-59%)',
+        decliningSkillsCount: fallingSkills.length,
       },
       skills: liveSkills,
+      risingSkills,
+      fallingSkills,
       careerPaths: liveCareerPaths,
       jobs: filteredJobs.slice(0, limit),
     });
@@ -519,8 +642,12 @@ export async function GET(request: Request) {
           remotePercentage: inMemoryCache.remotePercentage,
           topHiringTrack: inMemoryCache.topHiringTrack,
           topSkill: inMemoryCache.topSkill,
+          fastestDecliningSkill: inMemoryCache.fastestDecliningSkill,
+          decliningSkillsCount: inMemoryCache.decliningSkillsCount,
         },
         skills: inMemoryCache.liveSkills,
+        risingSkills: inMemoryCache.liveSkills.filter((s) => s.trendDirection === 'rising'),
+        fallingSkills: inMemoryCache.liveSkills.filter((s) => s.trendDirection === 'falling'),
         careerPaths: inMemoryCache.liveCareerPaths,
         jobs: inMemoryCache.processedJobs.slice(0, limit),
       });

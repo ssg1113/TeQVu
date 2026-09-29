@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {
   ArrowRight,
   TrendingUp,
+  TrendingDown,
   Sparkles,
   Layers,
   BookOpen,
@@ -20,11 +21,13 @@ import {
   Flame,
   Radio,
   RefreshCw,
+  AlertTriangle,
+  ArrowDownRight,
 } from 'lucide-react';
 import { technologies as fallbackTechs } from '../lib/mock-data/technologies';
 import { articles as fallbackArticles } from '../lib/mock-data/articles';
 import { researchPapers as fallbackResearch } from '../lib/mock-data/research';
-import { skills, careerPaths } from '../lib/mock-data/skills';
+import { skills, careerPaths, risingSkills, fallingSkills } from '../lib/mock-data/skills';
 import { storyClusters } from '../lib/mock-data/sources';
 import { TechCard } from '../components/cards/TechCard';
 import { ArticleCard } from '../components/cards/ArticleCard';
@@ -49,7 +52,9 @@ const LIVE_SOURCES = [
 export default function LandingPage() {
   const { interests, toggleInterest } = useAppStore();
 
-  const [trendingTech, setTrendingTech] = useState<Technology[]>(fallbackTechs.slice(0, 6));
+  const [allTrendingTech, setAllTrendingTech] = useState<Technology[]>(fallbackTechs);
+  const [trendingDirectionTab, setTrendingDirectionTab] = useState<'all' | 'rising' | 'falling'>('all');
+  const [skillsDirectionTab, setSkillsDirectionTab] = useState<'rising' | 'falling'>('rising');
   const [latestArticles, setLatestArticles] = useState<Article[]>(fallbackArticles.slice(0, 4));
   const [featuredResearch, setFeaturedResearch] = useState<ResearchPaper[]>(fallbackResearch.slice(0, 3));
   const [isLive, setIsLive] = useState(false);
@@ -71,7 +76,7 @@ export default function LandingPage() {
         if (trendsRes.status === 'fulfilled' && trendsRes.value.ok) {
           const trendsData = await trendsRes.value.json();
           if (trendsData.success && Array.isArray(trendsData.technologies) && trendsData.technologies.length > 0) {
-            setTrendingTech(trendsData.technologies.slice(0, 6));
+            setAllTrendingTech(trendsData.technologies);
           }
         }
 
@@ -103,7 +108,15 @@ export default function LandingPage() {
   }, []);
 
   // Top highlight entities for the Hero preview widget
-  const topTrend = trendingTech[0] || fallbackTechs[0];
+  const displayedTech = allTrendingTech
+    .filter((t) => {
+      if (trendingDirectionTab === 'rising') return t.growth >= 0 && t.status !== 'declining' && t.status !== 'falling';
+      if (trendingDirectionTab === 'falling') return t.growth < 0 || t.status === 'declining' || t.status === 'falling';
+      return true;
+    })
+    .slice(0, 6);
+
+  const topTrend = allTrendingTech[0] || fallbackTechs[0];
   const topNews = latestArticles[0] || fallbackArticles[0];
   const topPaper = featuredResearch[0] || fallbackResearch[0];
 
@@ -265,37 +278,86 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 2. TRENDING TECHNOLOGIES SECTION (Live GitHub Repos & Velocity) */}
+      {/* 2. TRENDING & SUNSET TECHNOLOGIES SECTION */}
       <section className="py-16 border-b border-slate-200/80 dark:border-slate-800/80 bg-slate-100/30 dark:bg-slate-900/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
                 <span className="text-xs font-mono uppercase tracking-wider text-cyan-500 font-semibold">
-                  Real-Time Velocity
+                  Dual-Vector Velocity Radar
                 </span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
-                Trending Technologies
+                Technology Trends & Sunset Radar
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                Live signals detected from developer repositories, open-source commits, and technology mentions.
+                Live signals detected across both fast-growing developer ecosystems and contracting legacy technologies.
               </p>
             </div>
+
+            {/* Trajectory Tab Switcher */}
+            <div className="flex items-center p-1 rounded-xl bg-white dark:bg-[#0f1629] border border-slate-200 dark:border-slate-800 text-xs shadow-sm">
+              <button
+                type="button"
+                onClick={() => setTrendingDirectionTab('all')}
+                className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                  trendingDirectionTab === 'all'
+                    ? 'bg-slate-900 text-white dark:bg-slate-800 shadow-sm'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-white'
+                }`}
+              >
+                All Techs
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrendingDirectionTab('rising')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                  trendingDirectionTab === 'rising'
+                    ? 'bg-emerald-500 text-white shadow-sm'
+                    : 'text-emerald-500 hover:text-emerald-400'
+                }`}
+              >
+                <Flame className="w-3.5 h-3.5" />
+                <span>🔥 Rising Demand</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrendingDirectionTab('falling')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                  trendingDirectionTab === 'falling'
+                    ? 'bg-rose-500 text-white shadow-sm'
+                    : 'text-rose-500 hover:text-rose-400'
+                }`}
+              >
+                <TrendingDown className="w-3.5 h-3.5" />
+                <span>📉 Sunset Watchlist</span>
+              </button>
+            </div>
+          </div>
+
+          {trendingDirectionTab === 'falling' && (
+            <div className="mb-6 p-4 rounded-xl bg-rose-500/5 border border-rose-500/20 text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+              <span>Displaying technologies facing contraction phase, framework deprecation, or active modernization migration. Recommended replacements are shown on each card.</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {displayedTech.map((tech) => (
+              <TechCard key={tech.id} tech={tech} />
+            ))}
+          </div>
+
+          <div className="mt-8 text-center">
             <Link
               href="/trending"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-600 dark:text-cyan-400 hover:underline"
             >
-              <span>Explore All Live Trends</span>
+              <span>Explore All Live Rising & Falling Technologies in Trends Radar</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {trendingTech.map((tech) => (
-              <TechCard key={tech.id} tech={tech} />
-            ))}
           </div>
         </div>
       </section>
@@ -589,6 +651,137 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+
+          {/* Workforce Skills Demand Radar (Rising vs Falling) */}
+          <div className="mt-12 pt-10 border-t border-slate-200/80 dark:border-slate-800/80">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
+              <div>
+                <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                  <Briefcase className="w-4 h-4 text-cyan-500" />
+                  <span>Workforce Skills Radar: Rising Demands vs. Sunset Signals</span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Track high-velocity competencies hiring teams require, alongside declining legacy tools to avoid on your resume.
+                </p>
+              </div>
+
+              {/* Skills Tab Switcher */}
+              <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setSkillsDirectionTab('rising')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                    skillsDirectionTab === 'rising'
+                      ? 'bg-emerald-500 text-white shadow-sm'
+                      : 'text-emerald-500 hover:text-emerald-400'
+                  }`}
+                >
+                  <Flame className="w-3.5 h-3.5" />
+                  <span>🔥 Rising Demands ({risingSkills.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSkillsDirectionTab('falling')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                    skillsDirectionTab === 'falling'
+                      ? 'bg-rose-500 text-white shadow-sm'
+                      : 'text-rose-500 hover:text-rose-400'
+                  }`}
+                >
+                  <TrendingDown className="w-3.5 h-3.5" />
+                  <span>📉 Sunset & Cooling ({fallingSkills.length})</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {(skillsDirectionTab === 'rising' ? risingSkills.slice(0, 3) : fallingSkills.slice(0, 3)).map((skill) => {
+                const isFalling = skill.trendDirection === 'falling';
+                return (
+                  <div
+                    key={skill.id}
+                    className={`p-5 rounded-2xl bg-white dark:bg-[#0f1629] border transition flex flex-col justify-between ${
+                      isFalling
+                        ? 'border-rose-500/30 hover:border-rose-500/50 shadow-sm'
+                        : 'border-slate-200/80 dark:border-slate-800/80 hover:border-cyan-500/40 shadow-sm'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-mono uppercase text-slate-400 font-semibold">{skill.category}</span>
+                        <span
+                          className={`text-xs font-mono font-bold flex items-center gap-0.5 ${
+                            isFalling ? 'text-rose-400' : 'text-emerald-400'
+                          }`}
+                        >
+                          {isFalling ? <ArrowDownRight className="w-3.5 h-3.5" /> : '+'}{skill.growth}%
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-base text-slate-900 dark:text-white leading-snug">
+                        {skill.name}
+                      </h4>
+
+                      {isFalling ? (
+                        <div className="mt-3 p-3 rounded-xl bg-rose-500/5 border border-rose-500/20 text-xs space-y-2">
+                          <div>
+                            <span className="text-[10px] font-mono uppercase text-rose-400 font-bold block">Why Demand Is Falling:</span>
+                            <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 line-clamp-2">
+                              {skill.declineReason}
+                            </p>
+                          </div>
+                          {skill.replacedBy && (
+                            <div>
+                              <span className="text-[10px] font-mono uppercase text-slate-400 font-bold block">Modern Upgrade Path:</span>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {skill.replacedBy.map((item, i) => (
+                                  <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono">
+                                    → {item}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="mt-3 space-y-2 text-xs">
+                          <div>
+                            <span className="text-[10px] font-mono uppercase text-slate-400 tracking-wider block">Related Stacks:</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {skill.relatedTechs.map((t, i) => (
+                                <span key={i} className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono">
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-mono uppercase text-slate-400 tracking-wider block">Hiring Roles:</span>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+                              {skill.roles.join(' • ')}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                      <span className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold ${
+                        isFalling ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'
+                      }`}>
+                        Demand: {skill.demand}
+                      </span>
+                      <Link
+                        href="/jobs-skills"
+                        className="text-cyan-500 dark:text-cyan-400 font-semibold hover:underline"
+                      >
+                        Skill Radar Details →
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -682,9 +875,9 @@ export default function LandingPage() {
                     Active Velocity Watchlist
                   </div>
                   <div className="flex items-center justify-between font-mono text-[11px] text-slate-600 dark:text-slate-300">
-                    <span>{trendingTech[0]?.name || 'Rust'} (+{trendingTech[0]?.growth || 31}%)</span>
-                    <span>{trendingTech[1]?.name || 'Next.js'} (+{trendingTech[1]?.growth || 24}%)</span>
-                    <span>{trendingTech[2]?.name || 'PyTorch'} (+{trendingTech[2]?.growth || 52}%)</span>
+                    <span>{allTrendingTech[0]?.name || 'Rust'} (+{allTrendingTech[0]?.growth || 31}%)</span>
+                    <span>{allTrendingTech[1]?.name || 'Next.js'} (+{allTrendingTech[1]?.growth || 24}%)</span>
+                    <span>{allTrendingTech[2]?.name || 'PyTorch'} (+{allTrendingTech[2]?.growth || 52}%)</span>
                   </div>
                 </div>
               </div>

@@ -4,7 +4,7 @@ import type { TrendStatus } from '../../lib/types';
 
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: 'default' | 'outline' | 'cyan' | 'purple' | 'emerald' | 'amber' | 'blue';
+  variant?: 'default' | 'outline' | 'cyan' | 'purple' | 'emerald' | 'amber' | 'blue' | 'rose';
   className?: string;
   size?: 'sm' | 'md';
 }
@@ -18,6 +18,7 @@ export function Badge({ children, variant = 'default', className, size = 'sm' }:
     emerald: 'bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50',
     amber: 'bg-amber-50 text-amber-700 border border-amber-200/60 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50',
     blue: 'bg-blue-50 text-blue-700 border border-blue-200/60 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/50',
+    rose: 'bg-rose-50 text-rose-700 border border-rose-200/60 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50',
   };
 
   const sizeStyles = {
@@ -39,6 +40,7 @@ export function TrendBadge({ status }: { status: TrendStatus }) {
     trending: { label: 'Trending', variant: 'emerald', icon: '🔥' },
     stable: { label: 'Stable', variant: 'blue', icon: '●' },
     declining: { label: 'Declining', variant: 'amber', icon: '↘' },
+    falling: { label: 'Falling', variant: 'rose', icon: '📉' },
   };
 
   const current = config[status] || config.stable;

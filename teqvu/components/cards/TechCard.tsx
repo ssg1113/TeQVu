@@ -23,6 +23,8 @@ export function TechCard({ tech, compact = false }: TechCardProps) {
       ? '#a855f7'
       : tech.status === 'trending'
       ? '#10b981'
+      : tech.status === 'falling'
+      ? '#f43f5e'
       : tech.status === 'declining'
       ? '#f59e0b'
       : '#06b6d4';
@@ -31,7 +33,11 @@ export function TechCard({ tech, compact = false }: TechCardProps) {
     return (
       <div className="flex items-center justify-between p-3.5 bg-white dark:bg-[#0f1629] border border-slate-200/80 dark:border-slate-800/80 rounded-xl hover:border-cyan-500/40 transition-all">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center font-bold text-xs text-cyan-500">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
+            tech.growth < 0
+              ? 'bg-rose-500/10 border border-rose-500/20 text-rose-500'
+              : 'bg-cyan-500/10 border border-cyan-500/20 text-cyan-500'
+          }`}>
             {tech.name.slice(0, 2).toUpperCase()}
           </div>
           <div>
@@ -51,7 +57,7 @@ export function TechCard({ tech, compact = false }: TechCardProps) {
           </div>
           <span
             className={`text-xs font-mono font-semibold flex items-center gap-0.5 ${
-              tech.growth >= 0 ? 'text-emerald-500' : 'text-amber-500'
+              tech.growth >= 0 ? 'text-emerald-500' : tech.growth <= -20 ? 'text-rose-500' : 'text-amber-500'
             }`}
           >
             {tech.growth >= 0 ? (
@@ -77,7 +83,13 @@ export function TechCard({ tech, compact = false }: TechCardProps) {
   }
 
   return (
-    <div className="group relative flex flex-col justify-between p-5 bg-white dark:bg-[#0f1629] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl hover:border-cyan-500/50 dark:hover:border-cyan-500/50 hover:shadow-xl hover:shadow-cyan-500/5 transition-all duration-300">
+    <div className={`group relative flex flex-col justify-between p-5 bg-white dark:bg-[#0f1629] border rounded-2xl transition-all duration-300 ${
+      tech.status === 'falling' || tech.growth <= -25
+        ? 'border-rose-500/30 hover:border-rose-500/60 hover:shadow-xl hover:shadow-rose-500/5'
+        : tech.status === 'declining' || tech.growth < 0
+        ? 'border-amber-500/30 hover:border-amber-500/60 hover:shadow-xl hover:shadow-amber-500/5'
+        : 'border-slate-200/80 dark:border-slate-800/80 hover:border-cyan-500/50 hover:shadow-xl hover:shadow-cyan-500/5'
+    }`}>
       {/* Header */}
       <div>
         {/* Row 1: Category + status badges (own row, no button here) */}
@@ -88,7 +100,7 @@ export function TechCard({ tech, compact = false }: TechCardProps) {
           <TrendBadge status={tech.status} />
         </div>
 
-        {/* Row 2: Tech name + Follow button. Button is flex-shrink-0 so it never overflows. */}
+        {/* Row 2: Tech name + Follow button */}
         <div className="flex items-start justify-between gap-2">
           <Link
             href={`/technologies/${tech.slug}`}
@@ -125,6 +137,23 @@ export function TechCard({ tech, compact = false }: TechCardProps) {
           {tech.description}
         </p>
 
+        {/* Replaced By / Migration Alternative (if falling) */}
+        {tech.replacedBy && tech.replacedBy.length > 0 && (
+          <div className="mt-2.5 p-2 rounded-lg bg-rose-500/5 dark:bg-rose-950/20 border border-rose-500/20 text-[11px] flex items-center gap-1.5 flex-wrap">
+            <span className="text-rose-500 dark:text-rose-400 font-mono font-semibold">Replaced By:</span>
+            <div className="flex flex-wrap gap-1">
+              {tech.replacedBy.map((item, idx) => (
+                <span
+                  key={idx}
+                  className="px-1.5 py-0.5 rounded text-[10px] bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-mono"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Sparkline & Score */}
         <div className="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
           <div>
@@ -137,7 +166,7 @@ export function TechCard({ tech, compact = false }: TechCardProps) {
               </span>
               <span
                 className={`text-xs font-semibold flex items-center font-mono ${
-                  tech.growth >= 0 ? 'text-emerald-500' : 'text-amber-500'
+                  tech.growth >= 0 ? 'text-emerald-500' : tech.growth <= -20 ? 'text-rose-500' : 'text-amber-500'
                 }`}
               >
                 {tech.growth >= 0 ? '+' : ''}

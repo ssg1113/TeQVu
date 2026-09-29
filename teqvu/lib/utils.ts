@@ -36,6 +36,7 @@ export function getStatusColor(status: string): string {
     trending: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400',
     stable:   'text-blue-500 bg-blue-50 dark:bg-blue-950/30 dark:text-blue-400',
     declining:'text-amber-500 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400',
+    falling:  'text-rose-500 bg-rose-50 dark:bg-rose-950/30 dark:text-rose-400',
   };
   return map[status] || map['stable'];
 }
