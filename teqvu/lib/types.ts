@@ -107,6 +107,7 @@ export interface Skill {
   growth: number;
   relatedTechs: string[];
   roles: string[];
+  activeJobsCount?: number;
 }
 
 export interface CareerPath {
@@ -118,6 +119,23 @@ export interface CareerPath {
   technologies: string[];
   averageSalary?: string;
   growthRate: number;
+  activeJobsCount?: number;
+  topCompanies?: string[];
+}
+
+export interface JobPosting {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  isRemote: boolean;
+  url: string;
+  tags: string[];
+  salary?: string;
+  postedAt: string;
+  category: string;
+  source: string;
+  descriptionSnippet?: string;
 }
 
 export interface BookmarkCollection {
