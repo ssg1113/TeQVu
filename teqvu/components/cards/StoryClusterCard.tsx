@@ -35,7 +35,14 @@ export function StoryClusterCard({ cluster }: StoryClusterCardProps) {
 
       {/* Main Title */}
       <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-snug">
-        {cluster.title}
+        <a
+          href={cluster.articles[0]?.url || cluster.primarySource?.url || '#'}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+        >
+          {cluster.title}
+        </a>
       </h3>
 
       {/* Summary */}
@@ -57,7 +64,15 @@ export function StoryClusterCard({ cluster }: StoryClusterCardProps) {
         <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
           <Globe className="w-3.5 h-3.5 text-cyan-500" />
           <span>
-            Primary: <strong className="text-slate-800 dark:text-slate-200">{cluster.primarySource.name}</strong>
+            Primary:{' '}
+            <a
+              href={cluster.primarySource.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-slate-800 dark:text-slate-200 hover:text-cyan-500 dark:hover:text-cyan-400 transition underline underline-offset-2"
+            >
+              {cluster.primarySource.name}
+            </a>
           </span>
         </div>
 

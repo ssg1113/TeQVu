@@ -78,7 +78,22 @@ export interface Source {
   name: string;
   url: string;
   logoUrl?: string;
-  type: 'RSS' | 'API' | 'Research' | 'Official Blog' | 'Developer Community' | 'Manual';
+  type:
+    | 'RSS'
+    | 'API'
+    | 'Research'
+    | 'Official Blog'
+    | 'Developer Community'
+    | 'Manual'
+    | 'Official Documentation'
+    | 'Official Project'
+    | 'University Press'
+    | 'Tech News'
+    | 'Systems'
+    | 'Open Source'
+    | 'Global Wire'
+    | 'Developer Tools'
+    | string;
   category: string;
   trustScore: number;  // 1–10
   status: 'active' | 'inactive' | 'error';
