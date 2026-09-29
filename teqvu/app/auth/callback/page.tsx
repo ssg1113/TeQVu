@@ -17,11 +17,20 @@ export default function AuthCallbackPage() {
     let isMounted = true;
 
     async function handleAuth() {
-      // Check for error in query/hash params
+      // 1. Check for error in search or hash params
       if (typeof window !== 'undefined') {
-        const urlParams = new URLSearchParams(window.location.search);
-        const error = urlParams.get('error');
-        const errorDescription = urlParams.get('error_description');
+        const searchParams = new URLSearchParams(window.location.search);
+        const hash = window.location.hash.startsWith('#')
+          ? window.location.hash.substring(1)
+          : window.location.hash;
+        const hashParams = new URLSearchParams(hash);
+
+        const error = searchParams.get('error') || hashParams.get('error');
+        const errorDescription =
+          searchParams.get('error_description') ||
+          hashParams.get('error_description') ||
+          searchParams.get('error_code') ||
+          hashParams.get('error_code');
 
         if (error || errorDescription) {
           if (isMounted) {
@@ -38,78 +47,77 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      try {
-        const { data, error } = await supabase.auth.getSession();
+      const processSession = (session: any) => {
+        if (!session?.user || !isMounted) return false;
+        const user = session.user;
+        const email = user.email || '';
+        const name =
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          user.user_metadata?.user_name ||
+          email.split('@')[0];
+        const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture;
+        const role = email.toLowerCase().includes('admin') ? 'admin' : 'user';
 
+        login(email, role, name);
+
+        if (avatarUrl || user.id) {
+          updateUser({
+            id: user.id,
+            ...(avatarUrl ? { avatarUrl } : {}),
+          });
+        }
+
+        setStatus('Authentication successful! Redirecting...');
+        setTimeout(() => {
+          router.push(role === 'admin' ? '/admin' : '/home');
+        }, 500);
+        return true;
+      };
+
+      try {
+        const searchParams = new URLSearchParams(window.location.search);
+        const code = searchParams.get('code');
+
+        // 2. If code exists in URL (PKCE flow), exchange it explicitly if needed
+        if (code) {
+          setStatus('Exchanging authentication code...');
+          const { data: exchangeData, error: exchangeError } =
+            await supabase.auth.exchangeCodeForSession(code);
+
+          if (!exchangeError && exchangeData?.session) {
+            if (processSession(exchangeData.session)) return;
+          } else if (exchangeError) {
+            console.warn('exchangeCodeForSession note:', exchangeError.message);
+          }
+        }
+
+        // 3. Check getSession()
+        const { data, error } = await supabase.auth.getSession();
         if (error) {
           if (isMounted) setErrorMsg(error.message);
           return;
         }
 
         if (data?.session?.user) {
-          const user = data.session.user;
-          const email = user.email || '';
-          const name =
-            user.user_metadata?.full_name ||
-            user.user_metadata?.name ||
-            user.user_metadata?.user_name ||
-            email.split('@')[0];
-          const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture;
-          const role = email.toLowerCase().includes('admin') ? 'admin' : 'user';
-
-          login(email, role, name);
-
-          if (avatarUrl || user.id) {
-            updateUser({
-              id: user.id,
-              ...(avatarUrl ? { avatarUrl } : {}),
-            });
-          }
-
-          if (isMounted) {
-            setStatus('Authentication successful! Redirecting...');
-            setTimeout(() => {
-              router.push('/home');
-            }, 600);
-          }
-          return;
+          if (processSession(data.session)) return;
         }
 
-        // If session not ready yet, listen for auth state change
+        // 4. Listen for auth state change if session is still settling
         const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
           if (session?.user && isMounted) {
-            const user = session.user;
-            const email = user.email || '';
-            const name =
-              user.user_metadata?.full_name ||
-              user.user_metadata?.name ||
-              user.user_metadata?.user_name ||
-              email.split('@')[0];
-            const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture;
-            const role = email.toLowerCase().includes('admin') ? 'admin' : 'user';
-
-            login(email, role, name);
-
-            if (avatarUrl || user.id) {
-              updateUser({
-                id: user.id,
-                ...(avatarUrl ? { avatarUrl } : {}),
-              });
-            }
-
-            setStatus('Authentication successful! Redirecting...');
-            setTimeout(() => {
-              router.push('/home');
-            }, 600);
+            processSession(session);
           }
         });
 
-        // Safety timeout
+        // 5. Timeout: If no session was established after 5 seconds, inform the user instead of silent redirect
         const timer = setTimeout(() => {
-          if (isMounted && !errorMsg) {
-            router.push('/home');
+          if (isMounted) {
+            setErrorMsg(
+              'Unable to establish authentication session. Please verify that your Supabase Site URL and Redirect URLs match this domain.'
+            );
           }
-        }, 3000);
+        }, 5000);
 
         return () => {
           authListener?.subscription?.unsubscribe();
@@ -127,7 +135,7 @@ export default function AuthCallbackPage() {
     return () => {
       isMounted = false;
     };
-  }, [login, updateUser, router, errorMsg]);
+  }, [login, updateUser, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-[#0a0f1e]">
