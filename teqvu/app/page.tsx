@@ -23,6 +23,7 @@ import {
   RefreshCw,
   AlertTriangle,
   ArrowDownRight,
+  Newspaper,
 } from 'lucide-react';
 import { TechCard } from '../components/cards/TechCard';
 import { ArticleCard } from '../components/cards/ArticleCard';
@@ -35,12 +36,12 @@ import { useAppStore } from '../lib/store/useAppStore';
 import type { Technology, Article, ResearchPaper, Skill, CareerPath } from '../lib/types';
 
 const LIVE_SOURCES = [
-  { id: 'reuters', name: 'Reuters Technology', trustScore: 10, type: 'Global Wire', badge: 'Live RSS' },
-  { id: 'bbc', name: 'BBC Technology', trustScore: 10, type: 'Public Broadcaster', badge: 'Live RSS' },
-  { id: 'digitaltrends', name: 'Digital Trends', trustScore: 9, type: 'Tech Reviews & News', badge: 'Live RSS' },
-  { id: 'googlenews', name: 'Google News Tech', trustScore: 9, type: 'Global Index', badge: 'Real-Time' },
-  { id: 'arxiv', name: 'arXiv.org', trustScore: 10, type: 'Academic Lab Preprints', badge: 'Live API' },
-  { id: 'github', name: 'GitHub Trends', trustScore: 9, type: 'Open-Source Repos', badge: 'Live Velocity' },
+  { id: 'reuters', name: 'Reuters Technology', trustScore: 10, type: 'Global Wire', badge: 'Wire' },
+  { id: 'bbc', name: 'BBC Technology', trustScore: 10, type: 'Public Broadcaster', badge: 'Broadcast' },
+  { id: 'digitaltrends', name: 'Digital Trends', trustScore: 9, type: 'Tech Reviews & News', badge: 'Reviews' },
+  { id: 'googlenews', name: 'Google News Tech', trustScore: 9, type: 'Global Index', badge: 'Index' },
+  { id: 'arxiv', name: 'arXiv.org', trustScore: 10, type: 'Academic Lab Preprints', badge: 'Preprint' },
+  { id: 'github', name: 'GitHub Trends', trustScore: 9, type: 'Open-Source Repos', badge: 'Code' },
 ];
 
 const DEFAULT_TOP_TREND: Technology = {
@@ -190,10 +191,10 @@ export default function LandingPage() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
-            {/* Pill with Live Status */}
+            {/* Pill */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 mb-6 font-mono">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Real-Time Tech Intelligence & Trend Platform</span>
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Technology Intelligence & Trend Platform</span>
             </div>
 
             {/* Headline */}
@@ -231,18 +232,13 @@ export default function LandingPage() {
           {/* Hero Intelligence Preview Widget (Fully Powered by Real-Time Data) */}
           <div className="mt-12 max-w-5xl mx-auto rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-[#0f1629]/80 backdrop-blur-xl shadow-2xl p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200/60 dark:border-slate-800/60 gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
+              <div className="flex items-center gap-2">
                 <span className="text-xs font-mono text-slate-600 dark:text-slate-300 uppercase tracking-wider font-semibold">
-                  Live Global Signal Feed
-                </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold">
-                  ● Real-Time Sync
+                  Global Technology Signals
                 </span>
               </div>
               <div className="flex items-center gap-3 text-xs font-mono text-slate-400">
                 <span>Reuters · BBC · Digital Trends · arXiv</span>
-                {lastSync && <span>• Synced {lastSync}</span>}
               </div>
             </div>
 
@@ -280,8 +276,8 @@ export default function LandingPage() {
                 <div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-mono text-cyan-400 font-semibold uppercase flex items-center gap-1">
-                      <Radio className="w-3 h-3 animate-pulse" />
-                      Live Wire Headline
+                      <Newspaper className="w-3 h-3" />
+                      Top Headline
                     </span>
                     <span className="text-[10px] font-mono text-cyan-500 font-semibold">
                       {topNews.source.name.split(' ')[0]}
@@ -311,7 +307,7 @@ export default function LandingPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-mono text-emerald-400 font-semibold uppercase flex items-center gap-1">
                       <BookOpen className="w-3 h-3" />
-                      Live arXiv Paper
+                      Featured Paper
                     </span>
                     <span className="text-xs font-mono text-purple-400 font-bold">
                       {topPaper.source}
@@ -949,9 +945,8 @@ export default function LandingPage() {
       <section className="py-16 border-b border-slate-200/80 dark:border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="flex items-center justify-center gap-2 mb-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">
-              Live Verified Network
+              Verified Intelligence Network
             </span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
@@ -1069,7 +1064,7 @@ export default function LandingPage() {
             <div className="flex gap-4">
               <span>Privacy Policy</span>
               <span>Terms of Service</span>
-              <span className="text-emerald-500 font-medium">● Real-Time API Status: Healthy</span>
+              <span className="text-emerald-500 font-medium">● All Systems Operational</span>
             </div>
           </div>
         </div>

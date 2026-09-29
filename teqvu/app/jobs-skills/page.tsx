@@ -365,35 +365,13 @@ export default function JobsSkillsPage() {
               </p>
             </div>
 
-            {/* Real-Time Live Status Pill, Auto-Refresh Toggle & Manual Sync */}
+            {/* Controls: Auto-Refresh Toggle & Manual Sync */}
             <div className="flex flex-wrap items-center gap-2.5">
-              {/* Real-time Indicator Pill */}
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-xs">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span
-                    className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                      isLive ? 'bg-emerald-400' : 'bg-cyan-400'
-                    }`}
-                  />
-                  <span
-                    className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                      isLive ? 'bg-emerald-500' : 'bg-cyan-500'
-                    }`}
-                  />
-                </span>
-                <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">
-                  {isLive ? 'REAL-TIME STREAM' : 'INITIALIZING'}
-                </span>
-                <span className="text-slate-400 text-[11px] font-mono border-l border-slate-300 dark:border-slate-700 pl-2">
-                  {relativeSyncTime}
-                </span>
-              </div>
-
               {/* Auto-Refresh Toggle Button */}
               <button
                 type="button"
                 onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
-                title={autoRefreshEnabled ? 'Pause real-time auto-refresh' : 'Enable real-time auto-refresh'}
+                title={autoRefreshEnabled ? 'Pause auto-refresh' : 'Enable auto-refresh'}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-medium border transition cursor-pointer ${
                   autoRefreshEnabled
                     ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
@@ -418,19 +396,13 @@ export default function JobsSkillsPage() {
                 type="button"
                 onClick={handleManualSync}
                 disabled={isRefreshing || isLoading}
-                title="Immediately poll live APIs for freshest postings and skills velocity"
+                title="Immediately poll APIs for freshest postings and skills velocity"
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 transition disabled:opacity-50 cursor-pointer shadow-sm shadow-cyan-500/5"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
                 <span>{isRefreshing ? 'Syncing...' : 'Sync Now'}</span>
               </button>
             </div>
-          </div>
-
-          {/* Live Data Pipelines Status Note */}
-          <div className="flex items-center gap-2 mt-3 text-[11px] text-slate-400 font-mono">
-            <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
-            <span>Live Pipelines: Arbeitnow • Remotive • Hacker News • GitHub Tech Trends • Tech News RSS</span>
           </div>
 
           {/* Quick Metrics Bar with Shimmer Loading */}
@@ -463,7 +435,7 @@ export default function JobsSkillsPage() {
                 </div>
                 <div className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" />
-                  <span>Real-time verified</span>
+                  <span>Verified active</span>
                 </div>
               </div>
 
@@ -740,9 +712,9 @@ export default function JobsSkillsPage() {
                           </strong>
                         </div>
 
-                        {/* Live Job Signals */}
+                        {/* Job Signals */}
                         <div className="flex items-center justify-between text-slate-400">
-                          <span>{isFalling ? 'Legacy Maintenance Postings:' : 'Live Job Openings:'}</span>
+                          <span>{isFalling ? 'Legacy Maintenance Postings:' : 'Job Openings:'}</span>
                           <span className={`font-mono font-bold ${
                             isFalling ? 'text-rose-400' : 'text-emerald-400'
                           }`}>
@@ -1044,15 +1016,15 @@ export default function JobsSkillsPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Radio className="w-4 h-4 text-emerald-400" />
-                  <span>Active Industry Openings (Real-Time Hiring Signals)</span>
+                  <Briefcase className="w-4 h-4 text-cyan-400" />
+                  <span>Active Industry Openings</span>
                 </h2>
-                <span className="px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  {filteredJobs.length} Live Positions
+                <span className="px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                  {filteredJobs.length} Open Positions
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Current engineering positions live-streamed from global tech employers, startups, and community boards.
+                Current engineering positions from global tech employers, startups, and community boards.
               </p>
             </div>
 

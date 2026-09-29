@@ -7,7 +7,6 @@ import {
   Filter,
   ArrowUpDown,
   RefreshCw,
-  Radio,
   Loader2,
   TrendingUp,
   TrendingDown,
@@ -26,8 +25,6 @@ export default function TechnologiesPage() {
   const [directionFilter, setDirectionFilter] = useState<'all' | 'rising' | 'falling'>('all');
   const [sortBy, setSortBy] = useState<'score' | 'growth' | 'decline' | 'mentions'>('score');
   const [loading, setLoading] = useState(false);
-  const [isLive, setIsLive] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState('Just now');
 
   const fetchLiveTechs = useCallback(async () => {
     setLoading(true);
@@ -37,13 +34,10 @@ export default function TechnologiesPage() {
         const data = await res.json();
         if (data.technologies && Array.isArray(data.technologies) && data.technologies.length > 0) {
           setTechList(data.technologies);
-          setIsLive(true);
-          setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         }
       }
     } catch (err) {
-      console.warn('Could not fetch live technologies, using cached index.', err);
-      setIsLive(false);
+      console.warn('Could not fetch technologies, using cached index.', err);
     } finally {
       setLoading(false);
     }
@@ -117,13 +111,6 @@ export default function TechnologiesPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Live Feed Status */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-mono">
-              <Radio className="w-3.5 h-3.5 animate-pulse text-cyan-400" />
-              <span>{isLive ? 'Live Ecosystem Stream' : 'Taxonomy Index'}</span>
-              <span className="text-slate-500">• {lastUpdated}</span>
-            </div>
-
             {/* Sync Button */}
             <button
               onClick={fetchLiveTechs}

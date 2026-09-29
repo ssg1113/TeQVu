@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, Layers, ArrowUpDown, RefreshCw, Radio, Loader2 } from 'lucide-react';
+import { Search, Filter, Layers, ArrowUpDown, RefreshCw, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { ArticleCard } from '../../components/cards/ArticleCard';
 import type { Article } from '../../lib/types';
@@ -12,8 +12,6 @@ export default function LatestNewsPage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedSort, setSelectedSort] = useState<'newest' | 'discussed' | 'trending'>('newest');
   const [loading, setLoading] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState('Just now');
-  const [isLive, setIsLive] = useState(true);
 
   const fetchLiveNews = useCallback(async () => {
     setLoading(true);
@@ -23,13 +21,10 @@ export default function LatestNewsPage() {
         const data = await res.json();
         if (data.articles && data.articles.length > 0) {
           setArticlesList(data.articles);
-          setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-          setIsLive(true);
         }
       }
     } catch (err) {
-      console.warn('Could not fetch live tech news, using cached data.', err);
-      setIsLive(false);
+      console.warn('Could not fetch tech news, using cached data.', err);
     } finally {
       setLoading(false);
     }
@@ -73,24 +68,18 @@ export default function LatestNewsPage() {
           <div>
             <div className="flex items-center gap-2 text-xs font-mono text-cyan-500 font-semibold mb-1">
               <Layers className="w-4 h-4" />
-              <span>Real-Time Ingestion Feed</span>
+              <span>Global Tech Developments</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
               Latest Technology Developments
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Aggregated live tech releases, verified engineering notes, and breaking developer discussions.
+              Aggregated tech releases, verified engineering notes, and breaking developer discussions.
             </p>
           </div>
 
-          {/* Live Feed Badge & Refresh Button */}
+          {/* Refresh Button */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-mono">
-              <Radio className="w-3.5 h-3.5 animate-pulse text-cyan-400" />
-              <span>{isLive ? 'Live Ingestion Feed' : 'Cached Stream'}</span>
-              <span className="text-slate-500">• {lastUpdated}</span>
-            </div>
-
             <button
               onClick={fetchLiveNews}
               disabled={loading}
@@ -161,8 +150,8 @@ export default function LatestNewsPage() {
         {/* Articles Grid */}
         <div className="space-y-4">
           <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
-            <span>Showing {filteredArticles.length} live developments</span>
-            <span>Real-time Ingestion Stream: Hacker News & Dev.to API</span>
+            <span>Showing {filteredArticles.length} developments</span>
+            <span>Sources: Hacker News · Dev.to</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

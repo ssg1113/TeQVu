@@ -17,7 +17,6 @@ import {
   ExternalLink,
   Clock,
   Loader2,
-  Radio,
   Newspaper,
   AlertTriangle,
 } from 'lucide-react';
@@ -65,8 +64,6 @@ export default function TrendingPage() {
   const [allTechs, setAllTechs] = useState<Technology[]>([]);
   const [loadingTechs, setLoadingTechs] = useState(false);
   const [loadingNews, setLoadingNews] = useState(false);
-  const [isLive, setIsLive] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [liveNews, setLiveNews] = useState<Article[]>([]);
   const { isWatching, toggleWatchlist } = useAppStore();
 
@@ -77,13 +74,9 @@ export default function TrendingPage() {
       const data = await res.json();
       if (data.success && Array.isArray(data.trends) && data.trends.length > 0) {
         setAllTechs(data.trends);
-        setIsLive(true);
-        setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-      } else {
-        setIsLive(false);
       }
     } catch {
-      setIsLive(false);
+      // ignore
     } finally {
       setLoadingTechs(false);
     }
@@ -178,16 +171,6 @@ export default function TrendingPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            {/* Live Indicator */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-              <span>{isLive ? 'Live Ecosystem Feeds' : 'Updating Feeds'}</span>
-              {lastUpdated && <span className="text-slate-500 text-[10px]">({lastUpdated})</span>}
-            </div>
-
             {/* Sync */}
             <button
               onClick={() => { fetchTrends(timeframe); fetchNews(); }}
@@ -665,9 +648,8 @@ export default function TrendingPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 flex-wrap">
               <Newspaper className="w-4 h-4 text-cyan-400" />
-              <h3 className="font-bold text-base text-slate-900 dark:text-white">Live Tech News</h3>
-              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[10px] font-mono">
-                <Radio className="w-3 h-3 animate-pulse" />
+              <h3 className="font-bold text-base text-slate-900 dark:text-white">Industry Coverage</h3>
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[10px] font-mono">
                 Reuters · BBC · Digital Trends · Google News
               </div>
             </div>

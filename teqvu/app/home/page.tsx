@@ -167,13 +167,13 @@ export default function HomePage() {
             <div>
               <div className="flex items-center gap-2 text-xs font-mono text-cyan-500 font-semibold mb-1">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Real-Time Intelligence Platform</span>
+                <span>Technology Intelligence Platform</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                 Good morning, {currentUser.name.split(' ')[0]}
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Here&apos;s live technology intelligence across your stack, verified by real-time feeds.
+                Here&apos;s your technology intelligence briefing across your stack.
               </p>
             </div>
 
@@ -188,36 +188,25 @@ export default function HomePage() {
                 href="/trending"
                 className="px-4 py-1.5 rounded-xl text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-500 transition shadow-md shadow-cyan-500/20"
               >
-                Live Trends
+                Trends Radar
               </Link>
             </div>
           </div>
 
-          {/* Real-Time Telemetry Status Strip */}
+          {/* Action Strip */}
           <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/60 flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-mono text-[11px] font-semibold">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Real-Time Feeds Active
-              </span>
-              <span className="text-slate-400 font-mono text-[11px] hidden sm:inline">
-                Reuters · BBC · Digital Trends · arXiv · GitHub
-              </span>
-              {lastUpdated && (
-                <span className="text-slate-400 font-mono text-[11px]">
-                  • Synced {lastUpdated}
-                </span>
-              )}
-            </div>
+            <span className="text-slate-400 font-mono text-[11px]">
+              Coverage: Reuters · BBC · Digital Trends · arXiv · GitHub
+            </span>
 
             <button
               onClick={() => fetchDashboardData()}
               disabled={isLoading}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-cyan-500 dark:hover:text-cyan-400 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 transition"
-              title="Refresh all real-time intelligence feeds"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-cyan-500 dark:hover:text-cyan-400 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 transition cursor-pointer"
+              title="Refresh intelligence feeds"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-cyan-500' : ''}`} />
-              <span>{isLoading ? 'Updating feeds...' : 'Refresh Data'}</span>
+              <span>{isLoading ? 'Updating feeds...' : 'Refresh'}</span>
             </button>
           </div>
         </div>
@@ -229,14 +218,14 @@ export default function HomePage() {
               <Flame className="w-5 h-5 text-purple-500" />
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">Trending Now</h2>
               <span className="text-xs font-mono text-purple-400 font-bold bg-purple-500/10 px-2 py-0.5 rounded-md">
-                Live GitHub Velocity
+                GitHub Velocity
               </span>
             </div>
             <Link
               href="/trending"
               className="text-xs font-semibold text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1"
             >
-              <span>View All Live Trends</span>
+              <span>View All Trends</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -264,19 +253,15 @@ export default function HomePage() {
             <section>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-500 animate-pulse" />
                   <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                     Important Developments
                   </h2>
-                  <span className="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-md hidden sm:inline">
-                    Live Coverage
-                  </span>
                 </div>
                 <Link
                   href="/latest"
                   className="text-xs font-semibold text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1"
                 >
-                  <span>Full Live Wire</span>
+                  <span>View All Latest</span>
                   <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
@@ -355,7 +340,7 @@ export default function HomePage() {
                     Research Spotlight
                   </h2>
                   <span className="text-[10px] font-mono text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded font-semibold">
-                    arXiv Live Preprints
+                    arXiv Preprints
                   </span>
                 </div>
                 <Link

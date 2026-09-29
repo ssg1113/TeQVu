@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, ExternalLink, Sparkles, GraduationCap, RefreshCw, Radio, Loader2 } from 'lucide-react';
+import { Search, Filter, ExternalLink, Sparkles, GraduationCap, RefreshCw, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { ResearchCard } from '../../components/cards/ResearchCard';
 import type { ResearchPaper } from '../../lib/types';
@@ -11,8 +11,6 @@ export default function ResearchHubPage() {
   const [search, setSearch] = useState('');
   const [selectedTopic, setSelectedTopic] = useState('All');
   const [loading, setLoading] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<string>('Just now');
-  const [isLive, setIsLive] = useState(true);
 
   const fetchLiveResearch = useCallback(async () => {
     setLoading(true);
@@ -22,13 +20,10 @@ export default function ResearchHubPage() {
         const data = await res.json();
         if (data.papers && data.papers.length > 0) {
           setPapers(data.papers);
-          setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-          setIsLive(true);
         }
       }
     } catch (err) {
-      console.warn('Could not fetch live arXiv papers, using cached current feed.', err);
-      setIsLive(false);
+      console.warn('Could not fetch arXiv papers, using cached current feed.', err);
     } finally {
       setLoading(false);
     }
@@ -82,18 +77,12 @@ export default function ResearchHubPage() {
               Research Hub
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Live arXiv preprints, peer-reviewed publications, and breakthrough whitepapers updated regularly.
+              arXiv preprints, peer-reviewed publications, and breakthrough whitepapers updated regularly.
             </p>
           </div>
 
-          {/* Live Feed Badge & Refresh Button */}
+          {/* Refresh Button */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono">
-              <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-400" />
-              <span>{isLive ? 'Live arXiv Feed' : 'Cached Feed'}</span>
-              <span className="text-slate-500">• {lastUpdated}</span>
-            </div>
-
             <button
               onClick={fetchLiveResearch}
               disabled={loading}
@@ -160,8 +149,8 @@ export default function ResearchHubPage() {
         {/* 2. ALL RESEARCH PAPERS */}
         <section className="space-y-4">
           <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
-            <span>Showing {filteredPapers.length} live research publications</span>
-            <span>Real-time Stream: arXiv Computer Science API</span>
+            <span>Showing {filteredPapers.length} publications</span>
+            <span>Source: arXiv Computer Science</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

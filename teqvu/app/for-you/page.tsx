@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Sparkles, Compass, CheckCircle2, SlidersHorizontal, RefreshCw, Radio, Loader2 } from 'lucide-react';
+import { Sparkles, Compass, CheckCircle2, SlidersHorizontal, RefreshCw, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { ArticleCard } from '../../components/cards/ArticleCard';
 import { TechCard } from '../../components/cards/TechCard';
@@ -14,8 +14,6 @@ export default function ForYouPage() {
   const [articlesList, setArticlesList] = useState<Article[]>([]);
   const [techList, setTechList] = useState<Technology[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isLive, setIsLive] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState('Just now');
 
   const fetchLiveData = useCallback(async () => {
     setLoading(true);
@@ -27,15 +25,12 @@ export default function ForYouPage() {
 
       if (newsRes?.success && Array.isArray(newsRes.articles) && newsRes.articles.length > 0) {
         setArticlesList(newsRes.articles);
-        setIsLive(true);
       }
       if (trendsRes?.success && Array.isArray(trendsRes.technologies) && trendsRes.technologies.length > 0) {
         setTechList(trendsRes.technologies);
       }
-      setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } catch (err) {
-      console.warn('Could not fetch live algorithmic recommendations.', err);
-      setIsLive(false);
+      console.warn('Could not fetch algorithmic recommendations.', err);
     } finally {
       setLoading(false);
     }
@@ -77,18 +72,11 @@ export default function ForYouPage() {
               Personalized Feed
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Curated dynamically from live feeds based on your interests ({interests.length} topics) and watchlist ({watchlistIds.length} tracked).
+              Curated dynamically based on your interests ({interests.length} topics) and watchlist ({watchlistIds.length} tracked).
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Live Feed Status */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-mono">
-              <Radio className="w-3.5 h-3.5 animate-pulse text-cyan-400" />
-              <span>{isLive ? 'Live Ingestion Engine' : 'Cached Feed'}</span>
-              <span className="text-slate-500">• {lastUpdated}</span>
-            </div>
-
             {/* Sync Button */}
             <button
               onClick={fetchLiveData}

@@ -346,7 +346,7 @@ export default function NewsletterPage() {
                   {isSending ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Compiling & Dispatching Live Brief...</span>
+                      <span>Compiling & Dispatching Brief...</span>
                     </>
                   ) : (
                     <>
@@ -382,7 +382,7 @@ export default function NewsletterPage() {
                           ? 'Dispatch Error'
                           : sendResult.mode === 'ethereal_preview'
                           ? `Simulated Web Preview (No Real Email Sent)`
-                          : `Live Email Delivered to ${sendResult.deliveredTo}`}
+                          : `Email Delivered to ${sendResult.deliveredTo}`}
                       </div>
                       <p className="leading-relaxed opacity-90">{sendResult.message || sendResult.error}</p>
 
@@ -421,10 +421,7 @@ export default function NewsletterPage() {
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                 <span className="font-mono text-[10px] uppercase text-cyan-400 font-bold flex items-center gap-1.5">
                   <Eye className="w-3.5 h-3.5" />
-                  Live Compiled Email Preview
-                </span>
-                <span className="text-[10px] font-mono text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
-                  ● Real-Time Feed
+                  Compiled Email Preview
                 </span>
               </div>
 

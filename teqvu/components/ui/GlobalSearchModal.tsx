@@ -43,7 +43,6 @@ export function GlobalSearchModal() {
   const [skillList, setSkillList] = useState<Skill[]>(() => cachedSearchData?.skills || []);
 
   const [isLoading, setIsLoading] = useState<boolean>(!cachedSearchData);
-  const [isLive, setIsLive] = useState<boolean>(Boolean(cachedSearchData));
   const [hasLoaded, setHasLoaded] = useState<boolean>(Boolean(cachedSearchData));
 
   // Fetch real data from live endpoints
@@ -97,7 +96,6 @@ export function GlobalSearchModal() {
       setArticleList(newArticles);
       setResearchList(newResearch);
       setSkillList(newSkills);
-      setIsLive(true);
       setHasLoaded(true);
 
       cachedSearchData = {
@@ -233,13 +231,6 @@ export function GlobalSearchModal() {
             <div className="flex items-center gap-1.5 px-2 py-0.5 mr-2 rounded-full bg-cyan-500/10 text-cyan-400 text-[10px] font-mono">
               <Loader2 className="w-3 h-3 animate-spin" />
               <span className="hidden sm:inline">Syncing...</span>
-            </div>
-          )}
-
-          {isLive && !isLoading && (
-            <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 mr-2 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>LIVE DATA</span>
             </div>
           )}
 
