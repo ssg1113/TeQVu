@@ -51,8 +51,18 @@ export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
   const [isLoading, setIsLoading] = useState(false);
-  const [isLive, setIsLive] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [greeting, setGreeting] = useState<string>('Welcome');
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      setGreeting('Good morning');
+    } else if (hour >= 12 && hour < 17) {
+      setGreeting('Good afternoon');
+    } else {
+      setGreeting('Good evening');
+    }
+  }, []);
 
   const fetchDashboardData = useCallback(async () => {
     setIsLoading(true);
@@ -114,11 +124,6 @@ export default function HomePage() {
           setSkillsList(skillsData.skills);
         }
       }
-
-      setIsLive(true);
-      setLastUpdated(
-        new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-      );
     } catch (err) {
       console.warn('Dashboard fetch error, falling back to cached state:', err);
     } finally {
@@ -170,7 +175,7 @@ export default function HomePage() {
                 <span>Technology Intelligence Platform</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                Good morning, {currentUser.name.split(' ')[0]}
+                {greeting}, {currentUser.name ? currentUser.name.split(' ')[0] : 'there'}
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                 Here&apos;s your technology intelligence briefing across your stack.
