@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TeQVu — Your Quick View of What's Next in Tech",
+  title: "TeQVu - Your Quick View of What's Next in Tech",
   description: "Technology Intelligence, Emerging Tech Trends, Research, and Personalized Newsletter Platform",
   icons: {
     icon: [
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     ],
   },
   openGraph: {
-    title: "TeQVu — Your Quick View of What's Next in Tech",
+    title: "TeQVu - Your Quick View of What's Next in Tech",
     description: "Technology Intelligence, Emerging Tech Trends, Research, and Personalized Newsletter Platform",
     siteName: "TeQVu",
     images: [
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
         url: "/logo.png",
         width: 1024,
         height: 1024,
-        alt: "TeQVu — Your Quick View of What's Next in Tech",
+        alt: "TeQVu - Your Quick View of What's Next in Tech",
       },
     ],
     locale: "en_US",
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "TeQVu — Your Quick View of What's Next in Tech",
+    title: "TeQVu - Your Quick View of What's Next in Tech",
     description: "Technology Intelligence, Emerging Tech Trends, Research, and Personalized Newsletter Platform",
     images: ["/logo.png"],
   },

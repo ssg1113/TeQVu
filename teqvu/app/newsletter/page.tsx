@@ -72,7 +72,10 @@ export default function NewsletterPage() {
   const fetchScheduleAndLogs = useCallback(async () => {
     setIsLoadingLogs(true);
     try {
-      const res = await fetch('/api/newsletter/schedule');
+      const res = await fetch(`/api/newsletter/schedule?_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.schedule) {
@@ -165,8 +168,10 @@ export default function NewsletterPage() {
       return 'Configured in Profile: Automation is paused.';
     }
 
-    const [hh, mm] = (s.deliveryTime || '08:30').split(':').map(Number);
-    const timeFormatted = `${((hh % 12) || 12)}:${String(mm || 0).padStart(2, '0')} ${hh >= 12 ? 'PM' : 'AM'}`;
+    const [hh, mm] = (s.deliveryTime || '08:00').split(':').map(Number);
+    const validHh = isNaN(hh) ? 8 : hh;
+    const validMm = isNaN(mm) ? 0 : mm;
+    const timeFormatted = `${((validHh % 12) || 12)}:${String(validMm).padStart(2, '0')} ${validHh >= 12 ? 'PM' : 'AM'}`;
 
     if (s.frequency === 'daily') {
       return `Daily at ${timeFormatted} (configured in Profile)`;
@@ -203,7 +208,7 @@ export default function NewsletterPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Controls Column (7 cols) */}
           <div className="lg:col-span-7 space-y-6">
-            
+
             {/* Target Email Selector Box */}
             <div className="p-6 rounded-2xl bg-white dark:bg-[#0f1629] border border-cyan-500/30 dark:border-cyan-500/30 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
@@ -259,21 +264,20 @@ export default function NewsletterPage() {
                   <button
                     key={freq}
                     onClick={() => updateNewsletterPrefs({ frequency: freq })}
-                    className={`py-2.5 px-3 rounded-xl text-xs font-bold capitalize transition border text-left flex flex-col justify-between ${
-                      newsletterPrefs.frequency === freq
+                    className={`py-2.5 px-3 rounded-xl text-xs font-bold capitalize transition border text-left flex flex-col justify-between ${newsletterPrefs.frequency === freq
                         ? 'bg-cyan-500 text-white border-cyan-500 shadow-md shadow-cyan-500/20'
                         : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30'
-                    }`}
+                      }`}
                   >
                     <span>{freq}</span>
                     <span className={`text-[10px] font-normal mt-0.5 opacity-80`}>
                       {freq === 'daily'
                         ? '24h signals'
                         : freq === 'weekly'
-                        ? '7-day digest'
-                        : freq === 'monthly'
-                        ? '30-day radar'
-                        : 'Paused'}
+                          ? '7-day digest'
+                          : freq === 'monthly'
+                            ? '30-day radar'
+                            : 'Paused'}
                     </span>
                   </button>
                 ))}
@@ -333,11 +337,10 @@ export default function NewsletterPage() {
                     <button
                       key={cat}
                       onClick={() => handleToggleCategory(cat)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition ${
-                        active
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition ${active
                           ? 'bg-purple-500 text-white border-purple-500 shadow-sm'
                           : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-purple-400'
-                      }`}
+                        }`}
                     >
                       {active ? '✓ ' : '+ '}
                       {cat}
@@ -442,13 +445,12 @@ export default function NewsletterPage() {
               {/* Delivery Success / Status Box */}
               {sendResult && (
                 <div
-                  className={`p-4 rounded-xl border text-xs space-y-2 animate-fade-in ${
-                    !sendResult.success
+                  className={`p-4 rounded-xl border text-xs space-y-2 animate-fade-in ${!sendResult.success
                       ? 'bg-red-500/10 border-red-500/30 text-red-800 dark:text-red-200'
                       : sendResult.mode === 'ethereal_preview'
-                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-800 dark:text-amber-200'
-                      : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-200'
-                  }`}
+                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-800 dark:text-amber-200'
+                        : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-200'
+                    }`}
                 >
                   <div className="flex items-start gap-2">
                     {!sendResult.success ? (
@@ -463,8 +465,8 @@ export default function NewsletterPage() {
                         {!sendResult.success
                           ? 'Dispatch Error'
                           : sendResult.mode === 'ethereal_preview'
-                          ? `Simulated Web Preview (No Live Provider Detected)`
-                          : `Email Delivered to ${sendResult.deliveredTo}`}
+                            ? `Simulated Web Preview (No Live Provider Detected)`
+                            : `Email Delivered to ${sendResult.deliveredTo}`}
                       </div>
                       <p className="leading-relaxed opacity-90">{sendResult.message || sendResult.error}</p>
 
@@ -472,7 +474,7 @@ export default function NewsletterPage() {
                         <div className="mt-2 p-2.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-900 dark:text-emerald-100 flex items-start gap-2 text-[11px]">
                           <Info className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
                           <div>
-                            <strong>Check Gmail Spam or Promotions:</strong> Because Resend sends via its shared test domain (<code className="font-mono text-[10px]">onboarding@resend.dev</code>), Gmail often places this preview into your <strong>Spam / Junk</strong> folder or <strong>Promotions tab</strong>.
+                            <strong>Check Gmail Spam or Promotions.</strong> Because Resend sends via its shared test domain (<code className="font-mono text-[10px]">onboarding@resend.dev</code>), Gmail often places this preview into your <strong>Spam / Junk</strong> folder or <strong>Promotions tab</strong>.
                           </div>
                         </div>
                       )}
@@ -656,13 +658,12 @@ export default function NewsletterPage() {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            row.status === 'delivered'
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${row.status === 'delivered'
                               ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                               : row.status === 'simulated'
-                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                              : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                          }`}
+                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                            }`}
                         >
                           {row.status}
                         </span>

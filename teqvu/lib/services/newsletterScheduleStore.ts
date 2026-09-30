@@ -38,11 +38,12 @@ const DEFAULT_SCHEDULE: NewsletterSchedule = {
   id: 'default',
   email: 'sgdesilva1113@gmail.com',
   frequency: 'daily',
-  deliveryTime: '08:30',
+  deliveryTime: '08:00',
   deliveryDayOfWeek: 1,
   deliveryDayOfMonth: 1,
   categories: ['AI/ML', 'Cloud Computing', 'Cybersecurity', 'Software Engineering', 'Languages'],
   enabled: true,
+  timezone: 'UTC',
   lastSentAt: null,
   lastSentCadence: null,
   createdAt: new Date().toISOString(),
@@ -67,7 +68,7 @@ function setMemCache(data: StoredData): void {
   _memCache = data;
 }
 
-// ─── Supabase KV Persistence (for Vercel cross-invocation persistence) ────────
+// ─── Supabase KV Persistence (for cross-invocation persistence) ───────────────
 
 async function loadFromSupabase(): Promise<StoredData | null> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return null;
@@ -80,18 +81,23 @@ async function loadFromSupabase(): Promise<StoredData | null> {
           Authorization: `Bearer ${SUPABASE_KEY}`,
           'Content-Type': 'application/json',
         },
-        signal: AbortSignal.timeout(3000),
+        signal: AbortSignal.timeout(8000),
       }
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[ScheduleStore] loadFromSupabase HTTP ${res.status}`);
+      return null;
+    }
     const rows: Array<{ value: any }> = await res.json();
     if (!rows || rows.length === 0) return null;
     const parsed = typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value;
+    if (!parsed || !parsed.schedule) return null;
     return {
       schedule: { ...DEFAULT_SCHEDULE, ...parsed.schedule },
       logs: Array.isArray(parsed.logs) ? parsed.logs : [],
     };
-  } catch {
+  } catch (err: any) {
+    console.warn('[ScheduleStore] loadFromSupabase error:', err.message);
     return null;
   }
 }
@@ -99,7 +105,7 @@ async function loadFromSupabase(): Promise<StoredData | null> {
 async function saveToSupabase(data: StoredData): Promise<void> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return;
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/app_kv_store`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/app_kv_store`, {
       method: 'POST',
       headers: {
         apikey: SUPABASE_KEY,
@@ -112,45 +118,69 @@ async function saveToSupabase(data: StoredData): Promise<void> {
         value: JSON.stringify(data),
         updated_at: new Date().toISOString(),
       }),
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(8000),
     });
-  } catch {
-    // Supabase unavailable – in-memory cache is still valid for this invocation
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      console.warn(`[ScheduleStore] saveToSupabase HTTP ${res.status}:`, errText);
+    }
+  } catch (err: any) {
+    console.warn('[ScheduleStore] saveToSupabase error:', err.message);
   }
 }
 
-// ─── Local Filesystem Persistence (for local dev, non-Vercel) ─────────────────
+// ─── Local Filesystem Persistence (works locally & in /tmp on Vercel) ─────────
+
+function getStoragePaths(): string[] {
+  const paths: string[] = [];
+  try {
+    const path = require('path');
+    if (!isVercel) {
+      paths.push(path.join(process.cwd(), 'data', 'newsletter-schedules.json'));
+    }
+    paths.push(path.join('/tmp', 'newsletter-schedules.json'));
+  } catch {
+    // ignore
+  }
+  return paths;
+}
 
 async function loadFromFilesystem(): Promise<StoredData | null> {
-  if (isVercel) return null;
   try {
     const fs = await import('fs');
-    const path = await import('path');
-    const dataDir = path.join(process.cwd(), 'data');
-    const scheduleFile = path.join(dataDir, 'newsletter-schedules.json');
-    if (!fs.existsSync(scheduleFile)) return null;
-    const content = fs.readFileSync(scheduleFile, 'utf-8');
-    const parsed = JSON.parse(content);
-    return {
-      schedule: { ...DEFAULT_SCHEDULE, ...parsed.schedule },
-      logs: Array.isArray(parsed.logs) ? parsed.logs : [],
-    };
+    for (const filePath of getStoragePaths()) {
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const parsed = JSON.parse(content);
+        if (parsed && parsed.schedule) {
+          return {
+            schedule: { ...DEFAULT_SCHEDULE, ...parsed.schedule },
+            logs: Array.isArray(parsed.logs) ? parsed.logs : [],
+          };
+        }
+      }
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
 async function saveToFilesystem(data: StoredData): Promise<void> {
-  if (isVercel) return;
   try {
     const fs = await import('fs');
     const path = await import('path');
-    const dataDir = path.join(process.cwd(), 'data');
-    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-    const scheduleFile = path.join(dataDir, 'newsletter-schedules.json');
-    fs.writeFileSync(scheduleFile, JSON.stringify(data, null, 2), 'utf-8');
+    for (const filePath of getStoragePaths()) {
+      try {
+        const dir = path.dirname(filePath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+      } catch {
+        // Continue to next path if one fails
+      }
+    }
   } catch (err) {
-    console.error('Error saving schedule to filesystem:', err);
+    console.error('[ScheduleStore] Error saving schedule to filesystem:', err);
   }
 }
 
@@ -160,11 +190,14 @@ async function loadData(): Promise<StoredData> {
   // 1. Return in-memory cache if already populated in this invocation
   if (_memCache) return _memCache;
 
-  // 2. Try persistent storage
+  // 2. Try Supabase first (primary persistent store across serverless instances)
   let loaded: StoredData | null = null;
-  if (isVercel) {
+  if (SUPABASE_URL && SUPABASE_KEY) {
     loaded = await loadFromSupabase();
-  } else {
+  }
+
+  // 3. Fall back to local filesystem (/tmp on Vercel, data/ in dev)
+  if (!loaded) {
     loaded = await loadFromFilesystem();
   }
 
@@ -175,11 +208,11 @@ async function loadData(): Promise<StoredData> {
 
 async function saveData(data: StoredData): Promise<void> {
   setMemCache(data);
-  if (isVercel) {
-    await saveToSupabase(data);
-  } else {
-    await saveToFilesystem(data);
-  }
+  // Persist to filesystem and Supabase in parallel
+  await Promise.allSettled([
+    saveToFilesystem(data),
+    saveToSupabase(data),
+  ]);
 }
 
 // ─── Public API (async) ───────────────────────────────────────────────────────

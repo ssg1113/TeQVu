@@ -207,7 +207,7 @@ export default function LandingPage() {
 
             {/* Supporting Text */}
             <p className="mt-6 text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl mx-auto">
-              Real-time technology intelligence aggregated from trusted global sources — Reuters, BBC, Digital Trends, arXiv preprints, and GitHub codebases.
+              Real-time technology intelligence aggregated from trusted global sources - Reuters, BBC, Digital Trends, arXiv preprints, and GitHub codebases.
             </p>
 
             {/* CTAs */}
@@ -359,22 +359,20 @@ export default function LandingPage() {
               <button
                 type="button"
                 onClick={() => setTrendingDirectionTab('all')}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
-                  trendingDirectionTab === 'all'
+                className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${trendingDirectionTab === 'all'
                     ? 'bg-slate-900 text-white dark:bg-slate-800 shadow-sm'
                     : 'text-slate-500 dark:text-slate-400 hover:text-white'
-                }`}
+                  }`}
               >
                 All Techs
               </button>
               <button
                 type="button"
                 onClick={() => setTrendingDirectionTab('rising')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
-                  trendingDirectionTab === 'rising'
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${trendingDirectionTab === 'rising'
                     ? 'bg-emerald-500 text-white shadow-sm'
                     : 'text-emerald-500 hover:text-emerald-400'
-                }`}
+                  }`}
               >
                 <Flame className="w-3.5 h-3.5" />
                 <span>🔥 Rising Demand</span>
@@ -382,11 +380,10 @@ export default function LandingPage() {
               <button
                 type="button"
                 onClick={() => setTrendingDirectionTab('falling')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
-                  trendingDirectionTab === 'falling'
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${trendingDirectionTab === 'falling'
                     ? 'bg-rose-500 text-white shadow-sm'
                     : 'text-rose-500 hover:text-rose-400'
-                }`}
+                  }`}
               >
                 <TrendingDown className="w-3.5 h-3.5" />
                 <span>📉 Sunset Watchlist</span>
@@ -578,11 +575,10 @@ export default function LandingPage() {
                     <button
                       key={item.id}
                       onClick={() => toggleInterest(item.id)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition ${
-                        selected
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition ${selected
                           ? 'bg-cyan-500 text-white border-cyan-500 shadow-md shadow-cyan-500/20'
                           : 'bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-cyan-500/50'
-                      }`}
+                        }`}
                     >
                       <span>{item.icon}</span>
                       <span>{item.label}</span>
@@ -720,11 +716,10 @@ export default function LandingPage() {
                 <button
                   type="button"
                   onClick={() => setSkillsDirectionTab('rising')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
-                    skillsDirectionTab === 'rising'
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${skillsDirectionTab === 'rising'
                       ? 'bg-emerald-500 text-white shadow-sm'
                       : 'text-emerald-500 hover:text-emerald-400'
-                  }`}
+                    }`}
                 >
                   <Flame className="w-3.5 h-3.5" />
                   <span>🔥 Rising Demands ({risingSkills.length})</span>
@@ -732,11 +727,10 @@ export default function LandingPage() {
                 <button
                   type="button"
                   onClick={() => setSkillsDirectionTab('falling')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
-                    skillsDirectionTab === 'falling'
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${skillsDirectionTab === 'falling'
                       ? 'bg-rose-500 text-white shadow-sm'
                       : 'text-rose-500 hover:text-rose-400'
-                  }`}
+                    }`}
                 >
                   <TrendingDown className="w-3.5 h-3.5" />
                   <span>📉 Sunset & Cooling ({fallingSkills.length})</span>
@@ -750,19 +744,17 @@ export default function LandingPage() {
                 return (
                   <div
                     key={skill.id}
-                    className={`p-5 rounded-2xl bg-white dark:bg-[#0f1629] border transition flex flex-col justify-between ${
-                      isFalling
+                    className={`p-5 rounded-2xl bg-white dark:bg-[#0f1629] border transition flex flex-col justify-between ${isFalling
                         ? 'border-rose-500/30 hover:border-rose-500/50 shadow-sm'
                         : 'border-slate-200/80 dark:border-slate-800/80 hover:border-cyan-500/40 shadow-sm'
-                    }`}
+                      }`}
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[11px] font-mono uppercase text-slate-400 font-semibold">{skill.category}</span>
                         <span
-                          className={`text-xs font-mono font-bold flex items-center gap-0.5 ${
-                            isFalling ? 'text-rose-400' : 'text-emerald-400'
-                          }`}
+                          className={`text-xs font-mono font-bold flex items-center gap-0.5 ${isFalling ? 'text-rose-400' : 'text-emerald-400'
+                            }`}
                         >
                           {isFalling ? <ArrowDownRight className="w-3.5 h-3.5" /> : '+'}{skill.growth}%
                         </span>
@@ -815,9 +807,8 @@ export default function LandingPage() {
                     </div>
 
                     <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
-                      <span className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold ${
-                        isFalling ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold ${isFalling ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'
+                        }`}>
                         Demand: {skill.demand}
                       </span>
                       <Link

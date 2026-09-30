@@ -75,7 +75,7 @@ export default function ProfilePage() {
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'disabled'>(
     newsletterPrefs.frequency || 'daily'
   );
-  const [deliveryTime, setDeliveryTime] = useState(newsletterPrefs.deliveryTime || '08:30');
+  const [deliveryTime, setDeliveryTime] = useState(newsletterPrefs.deliveryTime || '08:00');
   const [deliveryDayOfWeek, setDeliveryDayOfWeek] = useState(newsletterPrefs.deliveryDayOfWeek ?? 1);
   const [deliveryDayOfMonth, setDeliveryDayOfMonth] = useState(newsletterPrefs.deliveryDayOfMonth ?? 1);
   const [scheduleEnabled, setScheduleEnabled] = useState(newsletterPrefs.scheduleEnabled ?? true);
@@ -84,6 +84,35 @@ export default function ProfilePage() {
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [isSendingSample, setIsSendingSample] = useState(false);
   const [isTriggeringScheduled, setIsTriggeringScheduled] = useState(false);
+
+  // Sync state if store hydrated from localStorage with user preferences
+  useEffect(() => {
+    if (newsletterPrefs.deliveryTime) {
+      setDeliveryTime((prev) => (prev !== newsletterPrefs.deliveryTime ? newsletterPrefs.deliveryTime! : prev));
+    }
+    if (newsletterPrefs.frequency) {
+      setFrequency((prev) => (prev !== newsletterPrefs.frequency ? newsletterPrefs.frequency! : prev));
+    }
+    if (newsletterPrefs.scheduledEmail) {
+      setTargetEmail((prev) => (prev !== newsletterPrefs.scheduledEmail ? newsletterPrefs.scheduledEmail! : prev));
+    }
+    if (typeof newsletterPrefs.deliveryDayOfWeek === 'number') {
+      setDeliveryDayOfWeek(newsletterPrefs.deliveryDayOfWeek);
+    }
+    if (typeof newsletterPrefs.deliveryDayOfMonth === 'number') {
+      setDeliveryDayOfMonth(newsletterPrefs.deliveryDayOfMonth);
+    }
+    if (typeof newsletterPrefs.scheduleEnabled === 'boolean') {
+      setScheduleEnabled(newsletterPrefs.scheduleEnabled);
+    }
+  }, [
+    newsletterPrefs.deliveryTime,
+    newsletterPrefs.frequency,
+    newsletterPrefs.scheduledEmail,
+    newsletterPrefs.deliveryDayOfWeek,
+    newsletterPrefs.deliveryDayOfMonth,
+    newsletterPrefs.scheduleEnabled,
+  ]);
 
   const [sendResult, setSendResult] = useState<{
     success: boolean;
@@ -120,13 +149,19 @@ export default function ProfilePage() {
   const fetchScheduleAndLogs = useCallback(async () => {
     setIsLoadingLogs(true);
     try {
-      const res = await fetch('/api/newsletter/schedule');
+      const res = await fetch(`/api/newsletter/schedule?_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.schedule) {
           if (data.schedule.email) setTargetEmail(data.schedule.email);
           if (data.schedule.frequency) setFrequency(data.schedule.frequency);
-          if (data.schedule.deliveryTime) setDeliveryTime(data.schedule.deliveryTime);
+          if (data.schedule.deliveryTime) {
+            setDeliveryTime(data.schedule.deliveryTime);
+            updateNewsletterPrefs({ deliveryTime: data.schedule.deliveryTime });
+          }
           if (typeof data.schedule.deliveryDayOfWeek === 'number') {
             setDeliveryDayOfWeek(data.schedule.deliveryDayOfWeek);
           }
@@ -146,7 +181,7 @@ export default function ProfilePage() {
     } finally {
       setIsLoadingLogs(false);
     }
-  }, []);
+  }, [updateNewsletterPrefs]);
 
   useEffect(() => {
     fetchScheduleAndLogs();
@@ -162,10 +197,22 @@ export default function ProfilePage() {
     setTimeout(() => setSaved(false), 2500);
   };
 
+  const handleTimeChange = (newTime: string) => {
+    setDeliveryTime(newTime);
+    if (newTime && newTime.includes(':')) {
+      updateNewsletterPrefs({ deliveryTime: newTime });
+    }
+  };
+
   // Save Automated Delivery Schedule
   const handleSaveSchedule = async () => {
     setIsSavingSchedule(true);
     setSaveFeedback(null);
+
+    const userTimezone =
+      typeof Intl !== 'undefined'
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+        : 'UTC';
 
     const payload = {
       email: targetEmail,
@@ -175,28 +222,50 @@ export default function ProfilePage() {
       deliveryDayOfMonth,
       categories: newsletterPrefs.categories,
       enabled: scheduleEnabled,
+      timezone: userTimezone,
     };
 
     try {
       const res = await fetch('/api/newsletter/schedule', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+        },
         body: JSON.stringify(payload),
       });
 
       const data = await res.json();
       if (res.ok && data.success) {
+        const confirmedTime = data.schedule?.deliveryTime || deliveryTime;
+        setDeliveryTime(confirmedTime);
         updateNewsletterPrefs({
-          frequency,
-          deliveryTime,
-          deliveryDayOfWeek,
-          deliveryDayOfMonth,
-          scheduledEmail: targetEmail,
-          scheduleEnabled,
+          frequency: data.schedule?.frequency || frequency,
+          deliveryTime: confirmedTime,
+          deliveryDayOfWeek: data.schedule?.deliveryDayOfWeek ?? deliveryDayOfWeek,
+          deliveryDayOfMonth: data.schedule?.deliveryDayOfMonth ?? deliveryDayOfMonth,
+          scheduledEmail: data.schedule?.email || targetEmail,
+          scheduleEnabled: data.schedule?.enabled ?? scheduleEnabled,
+          timezone: userTimezone,
         });
         setSaveFeedback('Delivery schedule saved and active!');
         setTimeout(() => setSaveFeedback(null), 5000);
-        fetchScheduleAndLogs();
+
+        // Refresh delivery logs only without risking stale GET overwriting the schedule
+        try {
+          const logsRes = await fetch(`/api/newsletter/schedule?_t=${Date.now()}`, {
+            cache: 'no-store',
+            headers: { 'Cache-Control': 'no-cache' },
+          });
+          if (logsRes.ok) {
+            const logsData = await logsRes.json();
+            if (Array.isArray(logsData.logs)) {
+              setDeliveryLogs(logsData.logs);
+            }
+          }
+        } catch {
+          // ignore
+        }
       } else {
         setSaveFeedback(data.error || 'Failed to save delivery schedule.');
       }
@@ -291,8 +360,10 @@ export default function ProfilePage() {
       return 'Automated email delivery is currently paused.';
     }
 
-    const [hh, mm] = deliveryTime.split(':').map(Number);
-    const timeFormatted = `${((hh % 12) || 12)}:${String(mm || 0).padStart(2, '0')} ${hh >= 12 ? 'PM' : 'AM'}`;
+    const [hh, mm] = (deliveryTime || '08:00').split(':').map(Number);
+    const validHh = isNaN(hh) ? 8 : hh;
+    const validMm = isNaN(mm) ? 0 : mm;
+    const timeFormatted = `${((validHh % 12) || 12)}:${String(validMm).padStart(2, '0')} ${validHh >= 12 ? 'PM' : 'AM'}`;
 
     if (frequency === 'daily') {
       return `Daily at ${timeFormatted} to ${targetEmail}`;
@@ -402,14 +473,14 @@ export default function ProfilePage() {
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-black text-base text-slate-900 dark:text-white">
-                    Automated Summary Email Delivery Timer
+                    Delivery Time & Automated Schedule
                   </h3>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
                     Live Dispatch Engine
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xl leading-relaxed">
-                  Set a time for your daily, weekly, or monthly intelligence update. TeQVu automatically compiles real-time news, GitHub velocity, and arXiv preprints based on your preferences and delivers them directly to your email.
+                  Set the exact time of day when your summary should automatically arrive.
                 </p>
               </div>
             </div>
@@ -422,7 +493,10 @@ export default function ProfilePage() {
               <input
                 type="checkbox"
                 checked={scheduleEnabled}
-                onChange={(e) => setScheduleEnabled(e.target.checked)}
+                onChange={(e) => {
+                  setScheduleEnabled(e.target.checked);
+                  updateNewsletterPrefs({ scheduleEnabled: e.target.checked });
+                }}
                 className="sr-only peer"
               />
               <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-cyan-500"></div>
@@ -439,7 +513,10 @@ export default function ProfilePage() {
                 {currentUser?.email && (
                   <button
                     type="button"
-                    onClick={() => setTargetEmail(currentUser.email)}
+                    onClick={() => {
+                      setTargetEmail(currentUser.email);
+                      updateNewsletterPrefs({ scheduledEmail: currentUser.email });
+                    }}
                     className="text-[11px] font-mono text-cyan-500 hover:underline"
                   >
                     Use Profile Email
@@ -449,7 +526,10 @@ export default function ProfilePage() {
               <input
                 type="email"
                 value={targetEmail}
-                onChange={(e) => setTargetEmail(e.target.value)}
+                onChange={(e) => {
+                  setTargetEmail(e.target.value);
+                  updateNewsletterPrefs({ scheduledEmail: e.target.value });
+                }}
                 placeholder="your-email@gmail.com"
                 className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
               />
@@ -468,12 +548,14 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     key={freq}
-                    onClick={() => setFrequency(freq)}
-                    className={`py-2 px-2.5 rounded-xl text-xs font-bold capitalize transition border text-center ${
-                      frequency === freq
+                    onClick={() => {
+                      setFrequency(freq);
+                      updateNewsletterPrefs({ frequency: freq });
+                    }}
+                    className={`py-2 px-2.5 rounded-xl text-xs font-bold capitalize transition border text-center ${frequency === freq
                         ? 'bg-cyan-500 text-white border-cyan-500 shadow-md shadow-cyan-500/20'
                         : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30'
-                    }`}
+                      }`}
                   >
                     <div>{freq}</div>
                     <div className="text-[10px] font-normal opacity-80 mt-0.5">
@@ -488,13 +570,13 @@ export default function ProfilePage() {
           {/* Preferred Delivery Time Selector */}
           <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800/80">
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-              Preferred Delivery Time of Day:
+              Preferred Time of Day:
             </label>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
               <input
                 type="time"
                 value={deliveryTime}
-                onChange={(e) => setDeliveryTime(e.target.value)}
+                onChange={(e) => handleTimeChange(e.target.value)}
                 className="px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 shadow-sm"
               />
 
@@ -503,12 +585,11 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     key={preset.value}
-                    onClick={() => setDeliveryTime(preset.value)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${
-                      deliveryTime === preset.value
+                    onClick={() => handleTimeChange(preset.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${deliveryTime === preset.value
                         ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 font-bold'
                         : 'bg-slate-100 dark:bg-slate-800/80 text-slate-500 hover:text-slate-900 dark:hover:text-white border border-transparent'
-                    }`}
+                      }`}
                   >
                     {preset.label}
                   </button>
@@ -528,12 +609,14 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     key={day.value}
-                    onClick={() => setDeliveryDayOfWeek(day.value)}
-                    className={`py-2 rounded-xl text-xs font-mono font-bold transition border ${
-                      deliveryDayOfWeek === day.value
+                    onClick={() => {
+                      setDeliveryDayOfWeek(day.value);
+                      updateNewsletterPrefs({ deliveryDayOfWeek: day.value });
+                    }}
+                    className={`py-2 rounded-xl text-xs font-mono font-bold transition border ${deliveryDayOfWeek === day.value
                         ? 'bg-purple-500 text-white border-purple-500 shadow-sm'
                         : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-purple-400'
-                    }`}
+                      }`}
                   >
                     {day.label}
                   </button>
@@ -553,12 +636,14 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     key={d.value}
-                    onClick={() => setDeliveryDayOfMonth(d.value)}
-                    className={`py-2 px-3 rounded-xl text-xs font-mono font-bold transition border text-center ${
-                      deliveryDayOfMonth === d.value
+                    onClick={() => {
+                      setDeliveryDayOfMonth(d.value);
+                      updateNewsletterPrefs({ deliveryDayOfMonth: d.value });
+                    }}
+                    className={`py-2 px-3 rounded-xl text-xs font-mono font-bold transition border text-center ${deliveryDayOfMonth === d.value
                         ? 'bg-purple-500 text-white border-purple-500 shadow-sm'
                         : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-purple-400'
-                    }`}
+                      }`}
                   >
                     {d.label}
                   </button>
@@ -572,7 +657,7 @@ export default function ProfilePage() {
             <div className="flex items-center gap-2.5">
               <div className={`w-3 h-3 rounded-full ${scheduleEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
               <span className="font-medium text-slate-700 dark:text-slate-300">
-                <strong>Schedule Status:</strong> {getNextDeliveryDescription()}
+                <strong>Scheduled Delivery:</strong> {getNextDeliveryDescription()}
               </span>
             </div>
           </div>
@@ -593,7 +678,7 @@ export default function ProfilePage() {
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  <span>Save Delivery Schedule</span>
+                  <span>Save & Activate Schedule</span>
                 </>
               )}
             </button>
@@ -643,11 +728,10 @@ export default function ProfilePage() {
           {/* Feedback Card after test dispatch */}
           {sendResult && (
             <div
-              className={`p-4 rounded-xl border text-xs space-y-2 animate-fade-in ${
-                !sendResult.success
+              className={`p-4 rounded-xl border text-xs space-y-2 animate-fade-in ${!sendResult.success
                   ? 'bg-red-500/10 border-red-500/30 text-red-800 dark:text-red-200'
                   : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-200'
-              }`}
+                }`}
             >
               <div className="flex items-start gap-2">
                 {!sendResult.success ? (
@@ -748,11 +832,10 @@ export default function ProfilePage() {
                         </td>
                         <td className="py-2.5 px-3 text-right">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              log.status === 'delivered'
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${log.status === 'delivered'
                                 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                                 : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                            }`}
+                              }`}
                           >
                             {log.status}
                           </span>
@@ -787,11 +870,10 @@ export default function ProfilePage() {
                   type="button"
                   key={item.id}
                   onClick={() => toggleInterest(item.id)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition ${
-                    selected
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition ${selected
                       ? 'bg-cyan-500 text-white border-cyan-500 shadow-sm'
                       : 'bg-slate-50 dark:bg-slate-900/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-cyan-500'
-                  }`}
+                    }`}
                 >
                   <span>{item.icon}</span>
                   <span>{item.label}</span>

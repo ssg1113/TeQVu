@@ -194,6 +194,7 @@ export interface NewsletterPreference {
   deliveryDayOfMonth?: number; // 1-31 (for monthly)
   scheduledEmail?: string;
   scheduleEnabled?: boolean;
+  timezone?: string;        // IANA timezone identifier (e.g. "Asia/Colombo", "America/New_York")
 }
 
 export interface NewsletterSchedule {
@@ -205,6 +206,7 @@ export interface NewsletterSchedule {
   deliveryDayOfMonth: number; // 1-31 (default 1)
   categories: string[];
   enabled: boolean;
+  timezone?: string;
   lastSentAt?: string | null;
   lastSentCadence?: string | null;
   createdAt: string;
