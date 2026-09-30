@@ -1,5 +1,12 @@
 import fs from 'fs';
 import path from 'path';
+import {
+  fetchRealtimeArticles,
+  fetchRealtimeTrends,
+  fetchRealtimePapers,
+  filterArticlesByUserPreference,
+  filterTrendsByUserPreference,
+} from './realtimeIntelligence';
 
 export interface EmailArticle {
   title: string;
@@ -177,49 +184,78 @@ function escapeHtml(str: string): string {
 }
 
 /**
- * Direct server-side data compilation that never fails and never leaves empty sections.
+ * Real-time live data compilation tailored strictly according to user preferences (categories & cadence).
  */
 export async function compileNewsletterData(payload: NewsletterPayload) {
   const { categories, frequency } = payload;
-
-  // Filter curated articles according to user's categories
-  let filteredArticles = CURATED_ARTICLES.filter((item) =>
-    categories.some(
-      (cat) =>
-        item.category.toLowerCase().includes(cat.toLowerCase()) ||
-        cat.toLowerCase().includes(item.category.toLowerCase())
-    )
-  );
-
-  // If no exact match or category filter is broad, include top developments
-  if (filteredArticles.length < 3) {
-    const additional = CURATED_ARTICLES.filter((a) => !filteredArticles.includes(a));
-    filteredArticles = [...filteredArticles, ...additional];
-  }
-
-  // Adjust article count based on frequency
   const articleLimit = frequency === 'monthly' ? 5 : frequency === 'weekly' ? 4 : 3;
-  const selectedArticles = filteredArticles.slice(0, articleLimit);
+  const trendTimeframe = frequency === 'daily' ? '24h' : frequency === 'monthly' ? '30d' : '7d';
 
-  // Filter or pick trends
-  let filteredTrends = CURATED_TRENDS.filter((t) =>
-    categories.some(
-      (cat) =>
-        t.category.toLowerCase().includes(cat.toLowerCase()) ||
-        cat.toLowerCase().includes(t.category.toLowerCase())
-    )
-  );
-  if (filteredTrends.length < 3) {
-    const additionalTrends = CURATED_TRENDS.filter((t) => !filteredTrends.includes(t));
-    filteredTrends = [...filteredTrends, ...additionalTrends];
+  // 1. Fetch live real-time data across feeds (with in-memory cache)
+  const [liveArticles, liveTrends, livePapers] = await Promise.all([
+    fetchRealtimeArticles().catch(() => []),
+    fetchRealtimeTrends(trendTimeframe).catch(() => []),
+    fetchRealtimePapers(categories).catch(() => []),
+  ]);
+
+  // 2. Filter live articles strictly by user's chosen categories
+  let selectedArticles: EmailArticle[] = filterArticlesByUserPreference(liveArticles, categories, articleLimit);
+
+  // If live RSS feeds returned fewer than desired (e.g. slow network), supplement with curated items matching user's categories
+  if (selectedArticles.length < articleLimit) {
+    const curatedMatches = CURATED_ARTICLES.filter((item) =>
+      categories.some(
+        (cat) =>
+          item.category.toLowerCase().includes(cat.toLowerCase()) ||
+          cat.toLowerCase().includes(item.category.toLowerCase())
+      )
+    );
+    const combined = [...selectedArticles, ...curatedMatches];
+    const seen = new Set<string>();
+    selectedArticles = combined
+      .filter((a) => {
+        const k = a.title.toLowerCase().slice(0, 35);
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      })
+      .slice(0, articleLimit);
   }
-  const selectedTrends = filteredTrends.slice(0, 3);
 
-  // Select paper
-  const selectedPaper =
-    CURATED_PAPERS.find((p) =>
-      categories.some((cat) => cat.toLowerCase().includes('ai') || cat.toLowerCase().includes('software'))
-    ) || CURATED_PAPERS[0];
+  // 3. Filter live trends strictly by user's chosen categories
+  let selectedTrends: EmailTrend[] = filterTrendsByUserPreference(liveTrends, categories, 3);
+  if (selectedTrends.length < 3) {
+    const curatedTrendMatches = CURATED_TRENDS.filter((t) =>
+      categories.some(
+        (cat) =>
+          t.category.toLowerCase().includes(cat.toLowerCase()) ||
+          cat.toLowerCase().includes(t.category.toLowerCase())
+      )
+    );
+    const combined = [...selectedTrends, ...curatedTrendMatches];
+    const seen = new Set<string>();
+    selectedTrends = combined
+      .filter((t) => {
+        const k = t.name.toLowerCase();
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      })
+      .slice(0, 3);
+  }
+
+  // 4. Select live preprint matching user's chosen categories
+  let selectedPaper: EmailPaper | undefined = livePapers[0];
+  if (!selectedPaper) {
+    selectedPaper =
+      CURATED_PAPERS.find((p) =>
+        categories.some(
+          (cat) =>
+            p.category.toLowerCase().includes(cat.toLowerCase()) ||
+            cat.toLowerCase().includes(p.category.toLowerCase())
+        )
+      ) || CURATED_PAPERS[0];
+  }
 
   return {
     articles: selectedArticles,

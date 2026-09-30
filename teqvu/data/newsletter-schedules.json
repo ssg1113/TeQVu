@@ -2,20 +2,20 @@
   "schedule": {
     "id": "default",
     "email": "sgdesilva1113@gmail.com",
-    "frequency": "weekly",
-    "deliveryTime": "09:15",
+    "frequency": "monthly",
+    "deliveryTime": "09:00",
     "deliveryDayOfWeek": 1,
     "deliveryDayOfMonth": 1,
     "categories": [
       "AI/ML",
-      "Cloud Computing",
-      "Cybersecurity"
+      "Languages",
+      "Software Engineering"
     ],
     "enabled": true,
-    "lastSentAt": "2026-09-30T05:18:39.723Z",
-    "lastSentCadence": "weekly",
+    "lastSentAt": "2026-09-30T05:36:02.156Z",
+    "lastSentCadence": "monthly",
     "createdAt": "2026-09-30T04:07:32.903Z",
-    "updatedAt": "2026-09-30T05:17:08.243Z"
+    "updatedAt": "2026-09-30T05:35:42.559Z"
   },
   "logs": [
     {
@@ -97,6 +97,36 @@
       "status": "delivered",
       "mode": "resend",
       "messageId": "01a0f0c0-4410-7a5d-a653-387972ccb299"
+    },
+    {
+      "id": "log_1790746299585_j4mf1",
+      "timestamp": "2026-09-30T05:31:39.585Z",
+      "email": "sgdesilva1113@gmail.com",
+      "frequency": "sample",
+      "subject": "TeQVu Daily Brief — Sep 30: Real-Time Tech Intelligence",
+      "status": "delivered",
+      "mode": "resend",
+      "messageId": "01a0f0cc-09f8-7359-aa45-93c556d92b0d"
+    },
+    {
+      "id": "log_1790746530553_on819",
+      "timestamp": "2026-09-30T05:35:30.553Z",
+      "email": "sgdesilva1113@gmail.com",
+      "frequency": "daily",
+      "subject": "TeQVu Daily Brief — Sep 30: Real-Time Tech Intelligence",
+      "status": "delivered",
+      "mode": "resend",
+      "messageId": "01a0f0cf-9033-7056-911b-6b0b387a88f7"
+    },
+    {
+      "id": "log_1790746562154_ka72y",
+      "timestamp": "2026-09-30T05:36:02.154Z",
+      "email": "sgdesilva1113@gmail.com",
+      "frequency": "monthly",
+      "subject": "TeQVu Monthly Briefing — September 2026: Strategic Tech Radar",
+      "status": "delivered",
+      "mode": "resend",
+      "messageId": "01a0f0d0-0adc-737e-8962-f2c53446f0d8"
     }
   ]
 }

@@ -38,6 +38,12 @@ function wasSentWithinDays(isoString?: string | null, days: number = 6): boolean
   return now - d < days * 86400000;
 }
 
+function getMinutesDifference(current: string, target: string): number {
+  const [cH, cM] = current.split(':').map(Number);
+  const [tH, tM] = target.split(':').map(Number);
+  return (cH * 60 + cM) - (tH * 60 + tM);
+}
+
 /**
  * Evaluates active schedules and dispatches emails if the scheduled time has arrived.
  */
@@ -60,8 +66,9 @@ export async function runDueSchedulesCheck(): Promise<{
 
   const targetTime = schedule.deliveryTime || '09:00';
 
-  // Compare hours and minutes
-  const isTimeMatch = currentTime === targetTime;
+  // Compare hours and minutes with a 2-minute grace window
+  const diffMinutes = getMinutesDifference(currentTime, targetTime);
+  const isTimeMatch = diffMinutes >= 0 && diffMinutes <= 2;
 
   let isDue = false;
   let cadenceNote = '';

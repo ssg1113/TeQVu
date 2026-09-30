@@ -57,7 +57,7 @@ export default function HomePage() {
     const hour = new Date().getHours();
     if (hour >= 4 && hour < 12) {
       setGreeting('Good Morning');
-    } else if (hour >= 12 && hour < 17) {
+    } else if (hour >= 12 && hour < 18) {
       setGreeting('Good Afternoon');
     } else {
       setGreeting('Good Evening');
