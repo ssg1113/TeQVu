@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { UserProfile, NewsletterPreference } from '../types';
+import type { UserProfile, NewsletterPreference, AppNotification } from '../types';
 
 interface AppState {
   // Auth state
@@ -33,6 +33,21 @@ interface AppState {
   newsletterPrefs: NewsletterPreference;
   updateNewsletterPrefs: (prefs: Partial<NewsletterPreference>) => void;
 
+  // Real-Time Notifications
+  notifications: AppNotification[];
+  notifiedKeys: string[];
+  activeToast: AppNotification | null;
+  toastQueue: AppNotification[];
+  addNotification: (notification: Omit<AppNotification, 'id' | 'timestamp' | 'isRead'> & { id?: string; timestamp?: string; isRead?: boolean }) => void;
+  markAsRead: (id: string) => void;
+  markAllAsRead: () => void;
+  removeNotification: (id: string) => void;
+  clearNotifications: () => void;
+  setActiveToast: (toast: AppNotification | null) => void;
+  dismissToast: () => void;
+  hasNotifiedKey: (key: string) => boolean;
+  recordNotifiedKey: (key: string) => void;
+
   // Theme
   isDark: boolean;
   toggleTheme: () => void;
@@ -44,6 +59,7 @@ interface AppState {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
 }
+
 
 const DEFAULT_USER: UserProfile = {
   id: 'usr_normal_01',
@@ -175,6 +191,91 @@ export const useAppStore = create<AppState>()(
           newsletterPrefs: { ...state.newsletterPrefs, ...prefs },
         })),
 
+      // Real-Time Notifications
+      notifications: [],
+      notifiedKeys: [],
+      activeToast: null,
+      toastQueue: [],
+
+      addNotification: (item) => {
+        const id = item.id || `notif_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        const timestamp = item.timestamp || new Date().toISOString();
+        const newNotif: AppNotification = {
+          ...item,
+          id,
+          timestamp,
+          isRead: item.isRead ?? false,
+          importance: item.importance || 'normal',
+        };
+
+        set((state) => {
+          // Avoid duplicate ID in notification list
+          const exists = state.notifications.some((n) => n.id === id);
+          if (exists) return state;
+          // Keep newest first, max 50 items
+          const updated = [newNotif, ...state.notifications].slice(0, 50);
+
+          if (!state.activeToast) {
+            return {
+              notifications: updated,
+              activeToast: newNotif,
+            };
+          } else {
+            return {
+              notifications: updated,
+              toastQueue: [...state.toastQueue, newNotif],
+            };
+          }
+        });
+      },
+
+      markAsRead: (id) =>
+        set((state) => ({
+          notifications: state.notifications.map((n) =>
+            n.id === id ? { ...n, isRead: true } : n
+          ),
+        })),
+
+      markAllAsRead: () =>
+        set((state) => ({
+          notifications: state.notifications.map((n) => ({ ...n, isRead: true })),
+        })),
+
+      removeNotification: (id) =>
+        set((state) => ({
+          notifications: state.notifications.filter((n) => n.id !== id),
+          activeToast: state.activeToast?.id === id ? null : state.activeToast,
+          toastQueue: state.toastQueue.filter((n) => n.id !== id),
+        })),
+
+      clearNotifications: () =>
+        set({
+          notifications: [],
+          activeToast: null,
+          toastQueue: [],
+        }),
+
+      setActiveToast: (toast) => set({ activeToast: toast }),
+      dismissToast: () =>
+        set((state) => {
+          if (state.toastQueue.length > 0) {
+            const nextToast = state.toastQueue[0];
+            return {
+              activeToast: nextToast,
+              toastQueue: state.toastQueue.slice(1),
+            };
+          }
+          return { activeToast: null };
+        }),
+
+      hasNotifiedKey: (key) => get().notifiedKeys.includes(key),
+      recordNotifiedKey: (key) =>
+        set((state) => ({
+          notifiedKeys: state.notifiedKeys.includes(key)
+            ? state.notifiedKeys
+            : [...state.notifiedKeys.slice(-100), key],
+        })),
+
       // Theme (default dark for high-tech aesthetic)
       isDark: true,
       toggleTheme: () => set((state) => ({ isDark: !state.isDark })),
@@ -196,6 +297,8 @@ export const useAppStore = create<AppState>()(
         interests: state.interests,
         newsletterPrefs: state.newsletterPrefs,
         isDark: state.isDark,
+        notifications: state.notifications,
+        notifiedKeys: state.notifiedKeys,
       }),
     }
   )

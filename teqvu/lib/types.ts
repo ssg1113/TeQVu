@@ -244,3 +244,22 @@ export interface ProcessingJob {
   errorCount: number;
   details?: string;
 }
+
+export type NotificationType = 'trend' | 'update' | 'breaking' | 'watchlist';
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  category?: string;
+  timestamp: string;      // ISO string
+  url?: string;           // External URL
+  link?: string;          // Internal route e.g. /trending or /latest
+  isRead: boolean;
+  importance: 'critical' | 'high' | 'normal';
+  metric?: string;        // e.g. "+145% Surge" or "Reuters Breaking"
+  sourceName?: string;
+  relatedTech?: string;
+}
+

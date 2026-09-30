@@ -4,6 +4,8 @@ import React, { useEffect } from 'react';
 import { useAppStore } from '../../lib/store/useAppStore';
 import { Navbar } from './Navbar';
 import { GlobalSearchModal } from '../ui/GlobalSearchModal';
+import { NotificationManager } from '../notifications/NotificationManager';
+import { NotificationToast } from '../notifications/NotificationToast';
 
 export function AppWrapper({ children }: { children: React.ReactNode }) {
   const { isDark } = useAppStore();
@@ -22,6 +24,9 @@ export function AppWrapper({ children }: { children: React.ReactNode }) {
       <Navbar />
       <div className="flex-1 flex flex-col">{children}</div>
       <GlobalSearchModal />
+      <NotificationManager />
+      <NotificationToast />
     </div>
   );
 }
+

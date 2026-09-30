@@ -136,3 +136,34 @@ export const INTEREST_OPTIONS = [
   { id: 'robotics', label: 'Robotics', icon: '🤖' },
   { id: 'quantum', label: 'Quantum Computing', icon: '⚛️' },
 ];
+
+/**
+ * Play a sleek, synthesized notification sound using the Web Audio API
+ */
+export function playNotificationSound() {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    // Gentle dual-frequency chime (587Hz -> 880Hz)
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
+
+    gain.gain.setValueAtTime(0.06, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + 0.4);
+  } catch {
+    // Gracefully ignore audio autoplay policies
+  }
+}
+

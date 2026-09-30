@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -18,21 +18,57 @@ import {
   User,
   LogOut,
   Sparkles,
+  Flame,
+  CheckCheck,
+  Trash2,
+  ExternalLink,
 } from 'lucide-react';
 import { useAppStore } from '../../lib/store/useAppStore';
 import { Logo } from '../ui/Logo';
+import { timeAgo } from '../../lib/utils';
 
 export function Navbar() {
   const pathname = usePathname();
-  const { isDark, toggleTheme, setSearchOpen, currentUser, bookmarkedIds, watchlistIds, switchRole, logout } = useAppStore();
+  const {
+    isDark,
+    toggleTheme,
+    setSearchOpen,
+    currentUser,
+    bookmarkedIds,
+    watchlistIds,
+    switchRole,
+    logout,
+    notifications,
+    markAsRead,
+    markAllAsRead,
+    removeNotification,
+    clearNotifications,
+  } = useAppStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Close notifications dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setNotificationsOpen(false);
+      }
+    }
+    if (notificationsOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [notificationsOpen]);
+
 
   const navLinks = [
     { href: '/', label: 'Overview' },
@@ -88,49 +124,189 @@ export function Navbar() {
             </button>
 
             {/* Notifications Trigger */}
-            <div className="relative">
+            <div className="relative" ref={notifRef}>
               <button
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
                 className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition relative"
                 aria-label="Notifications"
               >
                 <Bell className="w-4 h-4" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-500 ring-2 ring-white dark:ring-[#0a0f1e]" />
+                {mounted && notifications.filter((n) => !n.isRead).length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-cyan-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-[#0a0f1e] shadow-sm animate-pulse">
+                    {notifications.filter((n) => !n.isRead).length > 9 ? '9+' : notifications.filter((n) => !n.isRead).length}
+                  </span>
+                )}
               </button>
 
               {notificationsOpen && (
-                <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-white dark:bg-[#0f1629] border border-slate-200 dark:border-slate-800 shadow-2xl p-4 text-xs z-50 animate-slide-up">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                    <span className="font-bold text-slate-900 dark:text-white">Smart Technology Signals</span>
-                    <span className="text-[10px] font-mono text-cyan-400">Anti-Spam Verified</span>
-                  </div>
-                  <div className="py-3 space-y-2.5">
-                    <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
-                      <div className="flex items-center gap-1.5 font-semibold text-purple-400">
-                        <Zap className="w-3.5 h-3.5" />
-                        <span>Emerging Trend: LLM Agents</span>
-                      </div>
-                      <p className="mt-1 text-slate-400 text-[11px]">
-                        +128% mentions surge detected across 74 independent developer blogs & research repos.
-                      </p>
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-[#0c1427] border border-slate-200 dark:border-slate-800 shadow-2xl text-xs z-50 animate-slide-up overflow-hidden">
+                  <div className="flex items-center justify-between p-3.5 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/60">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-900 dark:text-white text-xs">Live Technology Signals</span>
+                      {mounted && notifications.filter((n) => !n.isRead).length > 0 && (
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30">
+                          {notifications.filter((n) => !n.isRead).length} new
+                        </span>
+                      )}
                     </div>
-                    <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
-                      <div className="flex items-center gap-1.5 font-semibold text-cyan-400">
-                        <TrendingUp className="w-3.5 h-3.5" />
-                        <span>Watchlist Alert: Rust in Linux</span>
-                      </div>
-                      <p className="mt-1 text-slate-400 text-[11px]">
-                        Production drivers merged into mainline Linux tree.
-                      </p>
+                    <div className="flex items-center gap-2.5">
+                      {mounted && notifications.filter((n) => !n.isRead).length > 0 && (
+                        <button
+                          onClick={() => markAllAsRead()}
+                          className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-cyan-500 dark:hover:text-cyan-400 transition flex items-center gap-1 font-medium"
+                          title="Mark all as read"
+                        >
+                          <CheckCheck className="w-3.5 h-3.5" />
+                          <span>Mark read</span>
+                        </button>
+                      )}
+                      {mounted && notifications.length > 0 && (
+                        <button
+                          onClick={() => clearNotifications()}
+                          className="text-[11px] text-slate-400 hover:text-rose-500 transition flex items-center gap-1 font-medium"
+                          title="Clear all notifications"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Clear</span>
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-center">
+
+                  <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {!mounted || notifications.length === 0 ? (
+                      <div className="py-8 px-4 text-center">
+                        <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800/60 text-slate-400 flex items-center justify-center mx-auto mb-2.5">
+                          <Bell className="w-5 h-5 text-slate-400 opacity-60" />
+                        </div>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200 text-xs">All Caught Up</p>
+                        <p className="mt-1 text-slate-400 text-[11px] max-w-[240px] mx-auto">
+                          No pending alerts. You will be automatically notified when important updates or breakout tech trends appear.
+                        </p>
+                      </div>
+                    ) : (
+                      notifications.map((notif) => {
+                        const isTrend = notif.type === 'trend';
+                        return (
+                          <div
+                            key={notif.id}
+                            className={`p-3 transition group relative hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
+                              !notif.isRead ? 'bg-cyan-50/40 dark:bg-cyan-950/20' : ''
+                            }`}
+                          >
+                            <div className="flex items-start gap-2.5">
+                              <div
+                                className={`mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                                  isTrend
+                                    ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                                    : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                }`}
+                              >
+                                {isTrend ? <Zap className="w-3.5 h-3.5" /> : <Flame className="w-3.5 h-3.5" />}
+                              </div>
+
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span
+                                      className={`text-[9px] font-mono font-bold uppercase tracking-wider ${
+                                        isTrend
+                                          ? 'text-purple-600 dark:text-purple-400'
+                                          : 'text-rose-600 dark:text-rose-400'
+                                      }`}
+                                    >
+                                      {isTrend ? 'Breakout Trend' : 'Breaking Signal'}
+                                    </span>
+                                    {notif.metric && (
+                                      <span className="text-[9px] font-mono px-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60">
+                                        {notif.metric}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                                    {timeAgo(notif.timestamp)}
+                                  </span>
+                                </div>
+
+                                <a
+                                  href={notif.url || notif.link || '#'}
+                                  target={notif.url?.startsWith('http') ? '_blank' : '_self'}
+                                  rel="noopener noreferrer"
+                                  onClick={() => {
+                                    markAsRead(notif.id);
+                                    setNotificationsOpen(false);
+                                  }}
+                                  className="block mt-1 font-semibold text-slate-900 dark:text-white hover:text-cyan-500 dark:hover:text-cyan-400 transition text-[11px] leading-snug line-clamp-2"
+                                >
+                                  {notif.title}
+                                </a>
+
+                                <p className="mt-1 text-slate-500 dark:text-slate-400 text-[11px] line-clamp-2 leading-relaxed">
+                                  {notif.message}
+                                </p>
+
+                                <div className="mt-2 flex items-center justify-between">
+                                  <a
+                                    href={notif.url || notif.link || '#'}
+                                    target={notif.url?.startsWith('http') ? '_blank' : '_self'}
+                                    rel="noopener noreferrer"
+                                    onClick={() => {
+                                      markAsRead(notif.id);
+                                      setNotificationsOpen(false);
+                                    }}
+                                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-cyan-600 dark:text-cyan-400 hover:underline"
+                                  >
+                                    <span>{notif.url?.startsWith('http') ? 'Read Source' : 'View Details'}</span>
+                                    <ExternalLink className="w-2.5 h-2.5" />
+                                  </a>
+
+                                  <div className="flex items-center gap-1.5">
+                                    {!notif.isRead && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          markAsRead(notif.id);
+                                        }}
+                                        className="text-[10px] text-slate-400 hover:text-cyan-500 transition px-1 py-0.5 rounded font-medium"
+                                        title="Mark as read"
+                                      >
+                                        Mark read
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeNotification(notif.id);
+                                      }}
+                                      className="text-slate-400 hover:text-rose-400 p-0.5 rounded transition"
+                                      title="Dismiss alert"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <div className="p-2.5 bg-slate-50/70 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-800 text-center flex items-center justify-between text-[11px]">
                     <Link
-                      href="/newsletter"
+                      href="/trending"
                       onClick={() => setNotificationsOpen(false)}
-                      className="text-cyan-500 dark:text-cyan-400 hover:underline font-medium text-[11px]"
+                      className="text-slate-500 dark:text-slate-400 hover:text-cyan-500 transition font-medium"
                     >
-                      Manage Alert & Newsletter Rules →
+                      Live Radar →
+                    </Link>
+                    <Link
+                      href="/settings"
+                      onClick={() => setNotificationsOpen(false)}
+                      className="text-cyan-600 dark:text-cyan-400 hover:underline font-semibold"
+                    >
+                      Notification Rules
                     </Link>
                   </div>
                 </div>
