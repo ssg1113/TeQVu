@@ -189,6 +189,38 @@ export interface NewsletterPreference {
   maxAlertsPerDay: number;
   quietHoursStart: string;  // HH:MM
   quietHoursEnd: string;
+  deliveryTime?: string;    // HH:MM in 24-hr format (e.g. "09:00")
+  deliveryDayOfWeek?: number; // 0=Sun, 1=Mon, ..., 6=Sat (for weekly)
+  deliveryDayOfMonth?: number; // 1-31 (for monthly)
+  scheduledEmail?: string;
+  scheduleEnabled?: boolean;
+}
+
+export interface NewsletterSchedule {
+  id: string;
+  email: string;
+  frequency: 'daily' | 'weekly' | 'monthly' | 'disabled';
+  deliveryTime: string;      // "HH:MM" (e.g. "09:00")
+  deliveryDayOfWeek: number; // 0-6 (default 1 for Monday)
+  deliveryDayOfMonth: number; // 1-31 (default 1)
+  categories: string[];
+  enabled: boolean;
+  lastSentAt?: string | null;
+  lastSentCadence?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DeliveryLog {
+  id: string;
+  timestamp: string;
+  email: string;
+  frequency: 'daily' | 'weekly' | 'monthly' | 'sample';
+  subject: string;
+  status: 'delivered' | 'suppressed' | 'failed' | 'simulated';
+  mode: string;
+  messageId?: string;
+  error?: string;
 }
 
 export interface TrendDataPoint {

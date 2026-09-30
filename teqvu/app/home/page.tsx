@@ -55,12 +55,12 @@ export default function HomePage() {
 
   useEffect(() => {
     const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) {
-      setGreeting('Good morning');
+    if (hour >= 4 && hour < 12) {
+      setGreeting('Good Morning');
     } else if (hour >= 12 && hour < 17) {
-      setGreeting('Good afternoon');
+      setGreeting('Good Afternoon');
     } else {
-      setGreeting('Good evening');
+      setGreeting('Good Evening');
     }
   }, []);
 
@@ -311,11 +311,10 @@ export default function HomePage() {
                   <button
                     key={cat}
                     onClick={() => handleCategoryChange(cat)}
-                    className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition ${
-                      selectedCategory === cat
-                        ? 'bg-cyan-500 text-white shadow-sm font-semibold'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                    }`}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition ${selectedCategory === cat
+                      ? 'bg-cyan-500 text-white shadow-sm font-semibold'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      }`}
                   >
                     {cat}
                   </button>
@@ -424,9 +423,8 @@ export default function HomePage() {
                           height={16}
                         />
                         <span
-                          className={`text-xs font-mono font-bold ${
-                            tech.growth >= 0 ? 'text-emerald-500' : 'text-amber-500'
-                          }`}
+                          className={`text-xs font-mono font-bold ${tech.growth >= 0 ? 'text-emerald-500' : 'text-amber-500'
+                            }`}
                         >
                           {formatGrowth(tech.growth)}
                         </span>

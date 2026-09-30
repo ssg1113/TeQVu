@@ -79,6 +79,11 @@ const DEFAULT_USER: UserProfile = {
     maxAlertsPerDay: 1,
     quietHoursStart: '22:00',
     quietHoursEnd: '07:00',
+    deliveryTime: '08:30',
+    deliveryDayOfWeek: 1,
+    deliveryDayOfMonth: 1,
+    scheduledEmail: 'sgdesilva1113@gmail.com',
+    scheduleEnabled: true,
   },
 };
 
@@ -185,6 +190,11 @@ export const useAppStore = create<AppState>()(
         maxAlertsPerDay: 1,
         quietHoursStart: '22:00',
         quietHoursEnd: '07:00',
+        deliveryTime: '08:30',
+        deliveryDayOfWeek: 1,
+        deliveryDayOfMonth: 1,
+        scheduledEmail: 'sgdesilva1113@gmail.com',
+        scheduleEnabled: true,
       },
       updateNewsletterPrefs: (prefs) =>
         set((state) => ({

@@ -1,0 +1,102 @@
+{
+  "schedule": {
+    "id": "default",
+    "email": "sgdesilva1113@gmail.com",
+    "frequency": "weekly",
+    "deliveryTime": "09:15",
+    "deliveryDayOfWeek": 1,
+    "deliveryDayOfMonth": 1,
+    "categories": [
+      "AI/ML",
+      "Cloud Computing",
+      "Cybersecurity"
+    ],
+    "enabled": true,
+    "lastSentAt": "2026-09-30T05:18:39.723Z",
+    "lastSentCadence": "weekly",
+    "createdAt": "2026-09-30T04:07:32.903Z",
+    "updatedAt": "2026-09-30T05:17:08.243Z"
+  },
+  "logs": [
+    {
+      "id": "log_init_1790741252906",
+      "timestamp": "2026-09-29T04:07:32.906Z",
+      "email": "sgdesilva1113@gmail.com",
+      "frequency": "daily",
+      "subject": "TeQVu Daily Brief: Real-Time Tech Intelligence",
+      "status": "delivered",
+      "mode": "resend",
+      "messageId": "msg_init_sample"
+    },
+    {
+      "id": "log_1790741603868_cmhjw",
+      "timestamp": "2026-09-30T04:13:23.868Z",
+      "email": "sgdesilva1113@gmail.com",
+      "frequency": "sample",
+      "subject": "TeQVu Daily Brief — Sep 30: Real-Time Tech Intelligence",
+      "status": "delivered",
+      "mode": "resend",
+      "messageId": "01a0f084-62c3-7588-b7c4-533e567f97c1"
+    },
+    {
+      "id": "log_1790741624049_p29bl",
+      "timestamp": "2026-09-30T04:13:44.049Z",
+      "email": "sgdesilva1113@gmail.com",
+      "frequency": "daily",
+      "subject": "TeQVu Daily Brief — Sep 30: Real-Time Tech Intelligence",
+      "status": "delivered",
+      "mode": "resend",
+      "messageId": "01a0f084-b262-779f-870f-7c4c0adb32af"
+    },
+    {
+      "id": "log_1790743802737_oh0fb",
+      "timestamp": "2026-09-30T04:50:02.737Z",
+      "email": "sgdesilva1113@gmail.com",
+      "frequency": "daily",
+      "subject": "TeQVu Daily Brief — Sep 30: Real-Time Tech Intelligence",
+      "status": "delivered",
+      "mode": "resend",
+      "messageId": "01a0f0a5-effb-7711-984e-7b4671941d67"
+    },
+    {
+      "id": "log_1790745375938_a6cdj",
+      "timestamp": "2026-09-30T05:16:15.938Z",
+      "email": "sgdesilva1113@gmail.com",
+      "frequency": "sample",
+      "subject": "TeQVu Daily Brief — Sep 30: Real-Time Tech Intelligence",
+      "status": "delivered",
+      "mode": "resend",
+      "messageId": "01a0f0bd-f1fe-744d-a959-8f549253d601"
+    },
+    {
+      "id": "log_1790745447329_93oq4",
+      "timestamp": "2026-09-30T05:17:27.329Z",
+      "email": "sgdesilva1113@gmail.com",
+      "frequency": "weekly",
+      "subject": "TeQVu Weekly Digest — Week of Sep 30: Top Tech Signals",
+      "status": "delivered",
+      "mode": "resend",
+      "messageId": "01a0f0bf-08e0-7709-bec9-1f2bb47f853d"
+    },
+    {
+      "id": "log_1790745519719_jm8zc",
+      "timestamp": "2026-09-30T05:18:39.719Z",
+      "email": "sgdesilva1113@gmail.com",
+      "frequency": "weekly",
+      "subject": "TeQVu Weekly Digest — Week of Sep 30: Top Tech Signals",
+      "status": "delivered",
+      "mode": "resend",
+      "messageId": "01a0f0c0-23a3-79de-a8b1-08250d8a59df"
+    },
+    {
+      "id": "log_1790745528058_sll3r",
+      "timestamp": "2026-09-30T05:18:48.058Z",
+      "email": "sgdesilva1113@gmail.com",
+      "frequency": "sample",
+      "subject": "TeQVu Daily Brief — Sep 30: Real-Time Tech Intelligence",
+      "status": "delivered",
+      "mode": "resend",
+      "messageId": "01a0f0c0-4410-7a5d-a653-387972ccb299"
+    }
+  ]
+}

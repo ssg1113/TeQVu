@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Mail,
   ShieldCheck,
@@ -17,16 +17,55 @@ import {
   Flame,
   BookOpen,
   Info,
+  Play,
+  Save,
+  RotateCw,
+  Sparkles,
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { useAppStore } from '../../lib/store/useAppStore';
 import { Logo } from '../../components/ui/Logo';
+import type { DeliveryLog } from '../../lib/types';
+
+const DAYS_OF_WEEK = [
+  { label: 'Mon', value: 1, name: 'Monday' },
+  { label: 'Tue', value: 2, name: 'Tuesday' },
+  { label: 'Wed', value: 3, name: 'Wednesday' },
+  { label: 'Thu', value: 4, name: 'Thursday' },
+  { label: 'Fri', value: 5, name: 'Friday' },
+  { label: 'Sat', value: 6, name: 'Saturday' },
+  { label: 'Sun', value: 0, name: 'Sunday' },
+];
+
+const DAYS_OF_MONTH = [
+  { label: '1st of month', value: 1 },
+  { label: '15th of month', value: 15 },
+  { label: 'End of month (28th)', value: 28 },
+];
+
+const TIME_PRESETS = [
+  { label: '08:00 AM (Morning)', value: '08:00' },
+  { label: '09:30 AM (Workday)', value: '09:30' },
+  { label: '13:00 PM (Midday)', value: '13:00' },
+  { label: '18:00 PM (Wrap-up)', value: '18:00' },
+];
 
 export default function NewsletterPage() {
   const { newsletterPrefs, updateNewsletterPrefs, currentUser } = useAppStore();
 
-  const [targetEmail, setTargetEmail] = useState(currentUser.email || 'alex.rivera@techpulse.dev');
-  const [isSending, setIsSending] = useState(false);
+  const [targetEmail, setTargetEmail] = useState(
+    newsletterPrefs.scheduledEmail || currentUser?.email || 'sgdesilva1113@gmail.com'
+  );
+  const [deliveryTime, setDeliveryTime] = useState(newsletterPrefs.deliveryTime || '08:30');
+  const [deliveryDayOfWeek, setDeliveryDayOfWeek] = useState(newsletterPrefs.deliveryDayOfWeek ?? 1);
+  const [deliveryDayOfMonth, setDeliveryDayOfMonth] = useState(newsletterPrefs.deliveryDayOfMonth ?? 1);
+  const [scheduleEnabled, setScheduleEnabled] = useState(newsletterPrefs.scheduleEnabled ?? true);
+
+  const [isSendingSample, setIsSendingSample] = useState(false);
+  const [isTriggeringScheduled, setIsTriggeringScheduled] = useState(false);
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false);
+  const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
+
   const [sendResult, setSendResult] = useState<{
     success: boolean;
     mode?: string;
@@ -36,59 +75,64 @@ export default function NewsletterPage() {
     error?: string;
   } | null>(null);
 
-  // Live preview items initialized with live defaults
+  const [deliveryLogs, setDeliveryLogs] = useState<DeliveryLog[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+
+  // Live preview items for the mockup card
   const [previewArticle, setPreviewArticle] = useState<any>({
-    title: 'Real-time Intelligence Pipeline Initialized',
-    summary: 'Connecting to live RSS tech news, arXiv preprints, and GitHub velocity feeds.',
-    source: { name: 'TeQVu Intelligence' },
+    title: 'Anthropic Unveils Claude 3.7 Sonnet with Hybrid Reasoning Architecture',
+    summary:
+      'Seamlessly toggles between instantaneous standard responses and extended dynamic chain-of-thought reflection, setting state-of-the-art SWE-bench records.',
+    source: { name: 'Anthropic' },
+    category: 'AI/ML',
   });
   const [previewTech, setPreviewTech] = useState<any>({
-    name: 'TypeScript & Next.js',
-    growth: 45,
-    mentions: 18400,
-    description: 'Enterprise React framework for modern server-rendered applications.',
+    name: 'vllm-project/vllm',
+    growth: 86,
+    mentions: 38400,
+    description: 'High-throughput and memory-efficient LLM inference engine supporting PagedAttention and continuous batching.',
   });
   const [previewPaper, setPreviewPaper] = useState<any>({
-    title: 'Large Language Models as Tool-Use Orchestrators',
-    authors: ['AI Research Lab'],
-    summary: 'Benchmarking autonomous multi-agent reasoning and tool-calling execution.',
+    title: 'DeepSeek-R1: Incentivizing Reasoning Capability via Pure Reinforcement Learning',
+    authors: ['DeepSeek-AI Research'],
+    summary: 'Demonstrates emergent chain-of-thought and self-verification directly from large-scale RL without supervised reasoning demonstrations.',
+    source: 'arXiv CS.AI',
   });
 
-  // Keep target email synced with currentUser if currentUser changes
-  useEffect(() => {
-    if (currentUser?.email) {
-      setTargetEmail(currentUser.email);
-    }
-  }, [currentUser?.email]);
-
-  // Load real-time items for the live preview mockup
-  useEffect(() => {
-    async function loadLivePreview() {
-      try {
-        const [newsRes, trendsRes, researchRes] = await Promise.allSettled([
-          fetch('/api/tech-news?limit=1'),
-          fetch('/api/trends?timeframe=7d'),
-          fetch('/api/research?limit=1'),
-        ]);
-
-        if (newsRes.status === 'fulfilled' && newsRes.value.ok) {
-          const d = await newsRes.value.json();
-          if (d.articles?.length > 0) setPreviewArticle(d.articles[0]);
+  // Fetch backend schedule & delivery logs on mount
+  const fetchScheduleAndLogs = useCallback(async () => {
+    setIsLoadingLogs(true);
+    try {
+      const res = await fetch('/api/newsletter/schedule');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.schedule) {
+          if (data.schedule.email) setTargetEmail(data.schedule.email);
+          if (data.schedule.deliveryTime) setDeliveryTime(data.schedule.deliveryTime);
+          if (typeof data.schedule.deliveryDayOfWeek === 'number') {
+            setDeliveryDayOfWeek(data.schedule.deliveryDayOfWeek);
+          }
+          if (typeof data.schedule.deliveryDayOfMonth === 'number') {
+            setDeliveryDayOfMonth(data.schedule.deliveryDayOfMonth);
+          }
+          if (typeof data.schedule.enabled === 'boolean') {
+            setScheduleEnabled(data.schedule.enabled);
+          }
         }
-        if (trendsRes.status === 'fulfilled' && trendsRes.value.ok) {
-          const d = await trendsRes.value.json();
-          if (d.technologies?.length > 0) setPreviewTech(d.technologies[0]);
+        if (Array.isArray(data.logs)) {
+          setDeliveryLogs(data.logs);
         }
-        if (researchRes.status === 'fulfilled' && researchRes.value.ok) {
-          const d = await researchRes.value.json();
-          if (d.papers?.length > 0) setPreviewPaper(d.papers[0]);
-        }
-      } catch (e) {
-        console.warn('Could not load live preview items:', e);
       }
+    } catch (e) {
+      console.warn('Could not load schedule logs:', e);
+    } finally {
+      setIsLoadingLogs(false);
     }
-    loadLivePreview();
   }, []);
+
+  useEffect(() => {
+    fetchScheduleAndLogs();
+  }, [fetchScheduleAndLogs]);
 
   const categories = [
     'AI/ML',
@@ -110,8 +154,53 @@ export default function NewsletterPage() {
     updateNewsletterPrefs({ categories: updated });
   };
 
-  const handleSendTest = async () => {
-    setIsSending(true);
+  // Save Schedule to backend & store
+  const handleSaveSchedule = async () => {
+    setIsSavingSchedule(true);
+    setSaveFeedback(null);
+
+    const payload = {
+      email: targetEmail,
+      frequency: newsletterPrefs.frequency,
+      deliveryTime,
+      deliveryDayOfWeek,
+      deliveryDayOfMonth,
+      categories: newsletterPrefs.categories,
+      enabled: scheduleEnabled,
+    };
+
+    try {
+      const res = await fetch('/api/newsletter/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        updateNewsletterPrefs({
+          deliveryTime,
+          deliveryDayOfWeek,
+          deliveryDayOfMonth,
+          scheduledEmail: targetEmail,
+          scheduleEnabled,
+        });
+        setSaveFeedback('Schedule saved successfully! Automated delivery is active.');
+        setTimeout(() => setSaveFeedback(null), 5000);
+        fetchScheduleAndLogs();
+      } else {
+        setSaveFeedback(data.error || 'Failed to save delivery schedule.');
+      }
+    } catch (err: any) {
+      setSaveFeedback(err.message || 'Network error saving delivery schedule.');
+    } finally {
+      setIsSavingSchedule(false);
+    }
+  };
+
+  // Send Sample Newsletter Preview
+  const handleSendSample = async () => {
+    setIsSendingSample(true);
     setSendResult(null);
 
     try {
@@ -134,6 +223,7 @@ export default function NewsletterPage() {
           message: data.message,
           previewUrl: data.previewUrl,
         });
+        fetchScheduleAndLogs();
       } else {
         setSendResult({
           success: false,
@@ -146,8 +236,70 @@ export default function NewsletterPage() {
         error: err.message || 'Network error while attempting to dispatch email.',
       });
     } finally {
-      setIsSending(false);
+      setIsSendingSample(false);
     }
+  };
+
+  // Trigger Scheduled Dispatch Now (Manual Test Run of Scheduled Email)
+  const handleTriggerScheduledNow = async () => {
+    setIsTriggeringScheduled(true);
+    setSendResult(null);
+
+    try {
+      const res = await fetch('/api/newsletter/schedule', {
+        method: 'PUT',
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSendResult({
+          success: true,
+          mode: data.result?.mode,
+          deliveredTo: data.result?.deliveredTo,
+          message: `Scheduled ${newsletterPrefs.frequency} briefing triggered and delivered to ${data.result?.deliveredTo}!`,
+          previewUrl: data.result?.previewUrl,
+        });
+        fetchScheduleAndLogs();
+      } else {
+        setSendResult({
+          success: false,
+          error: data.error || 'Failed to trigger scheduled email.',
+        });
+      }
+    } catch (err: any) {
+      setSendResult({
+        success: false,
+        error: err.message || 'Network error executing scheduled dispatch.',
+      });
+    } finally {
+      setIsTriggeringScheduled(false);
+    }
+  };
+
+  // Calculate human friendly next scheduled time
+  const getNextDeliveryDescription = () => {
+    if (!scheduleEnabled || newsletterPrefs.frequency === 'disabled') {
+      return 'Scheduled automated delivery is currently disabled.';
+    }
+
+    const [hh, mm] = deliveryTime.split(':').map(Number);
+    const timeFormatted = `${((hh % 12) || 12)}:${String(mm || 0).padStart(2, '0')} ${hh >= 12 ? 'PM' : 'AM'}`;
+
+    if (newsletterPrefs.frequency === 'daily') {
+      return `Daily at ${timeFormatted} to ${targetEmail}`;
+    }
+
+    if (newsletterPrefs.frequency === 'weekly') {
+      const dayObj = DAYS_OF_WEEK.find((d) => d.value === deliveryDayOfWeek) || DAYS_OF_WEEK[0];
+      return `Weekly every ${dayObj.name} at ${timeFormatted} to ${targetEmail}`;
+    }
+
+    if (newsletterPrefs.frequency === 'monthly') {
+      const dayLabel = deliveryDayOfMonth === 1 ? '1st' : deliveryDayOfMonth === 15 ? '15th' : '28th';
+      return `Monthly on the ${dayLabel} at ${timeFormatted} to ${targetEmail}`;
+    }
+
+    return `At ${timeFormatted} to ${targetEmail}`;
   };
 
   return (
@@ -163,7 +315,7 @@ export default function NewsletterPage() {
             Newsletter & Smart Alert Governance
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-3xl">
-            Control your digest frequency, topical filtering, and strict anti-spam thresholds. Send real-time sample previews on demand.
+            Configure your automated digest schedule, preferred time of delivery, topical categories, and anti-spam controls.
           </p>
         </div>
 
@@ -171,6 +323,7 @@ export default function NewsletterPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Controls Column (7 cols) */}
           <div className="lg:col-span-7 space-y-6">
+            
             {/* Target Email Selector Box */}
             <div className="p-6 rounded-2xl bg-white dark:bg-[#0f1629] border border-cyan-500/30 dark:border-cyan-500/30 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
@@ -180,7 +333,7 @@ export default function NewsletterPage() {
                     Recipient Email Address
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Enter the email address where you want to receive your live briefings.
+                    Enter the email address where your automated briefs and sample previews will be delivered.
                   </p>
                 </div>
                 {currentUser?.email && (
@@ -208,11 +361,12 @@ export default function NewsletterPage() {
             <div className="p-6 rounded-2xl bg-white dark:bg-[#0f1629] border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-cyan-500" />
                     Digest Delivery Frequency
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Select how often you wish to receive your personalized briefing.
+                    Select your preferred cadence for automated email summaries.
                   </p>
                 </div>
                 <span className="text-xs font-mono text-cyan-400 font-semibold uppercase">
@@ -225,17 +379,182 @@ export default function NewsletterPage() {
                   <button
                     key={freq}
                     onClick={() => updateNewsletterPrefs({ frequency: freq })}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold capitalize transition border ${
+                    className={`py-2.5 px-3 rounded-xl text-xs font-bold capitalize transition border text-left flex flex-col justify-between ${
                       newsletterPrefs.frequency === freq
                         ? 'bg-cyan-500 text-white border-cyan-500 shadow-md shadow-cyan-500/20'
-                        : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-700'
+                        : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30'
                     }`}
                   >
-                    {freq}
+                    <span>{freq}</span>
+                    <span className={`text-[10px] font-normal mt-0.5 opacity-80`}>
+                      {freq === 'daily'
+                        ? '24h signals'
+                        : freq === 'weekly'
+                        ? '7-day digest'
+                        : freq === 'monthly'
+                        ? '30-day radar'
+                        : 'Paused'}
+                    </span>
                   </button>
                 ))}
               </div>
             </div>
+
+            {/* AUTOMATED TIME & CADENCE SCHEDULING CARD */}
+            {newsletterPrefs.frequency !== 'disabled' && (
+              <div className="p-6 rounded-2xl bg-white dark:bg-[#0f1629] border border-cyan-500/40 dark:border-cyan-500/40 shadow-md shadow-cyan-500/5 space-y-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-cyan-500/10 dark:bg-cyan-500/20 flex items-center justify-center text-cyan-500">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                        Delivery Time & Automated Schedule
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Set the exact time of day when your summary should automatically arrive.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Enable Schedule Toggle */}
+                  <label className="flex items-center gap-2 cursor-pointer text-xs">
+                    <span className="text-slate-400 text-[11px] font-medium hidden sm:inline">
+                      {scheduleEnabled ? 'Automation Active' : 'Automation Paused'}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={scheduleEnabled}
+                      onChange={(e) => setScheduleEnabled(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-cyan-500"></div>
+                  </label>
+                </div>
+
+                {/* Delivery Time Input & Quick Presets */}
+                <div className="space-y-3 pt-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Preferred Time of Day:
+                  </label>
+                  
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <div className="relative">
+                      <input
+                        type="time"
+                        value={deliveryTime}
+                        onChange={(e) => setDeliveryTime(e.target.value)}
+                        className="px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      />
+                    </div>
+
+                    {/* Quick Presets */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {TIME_PRESETS.map((preset) => (
+                        <button
+                          key={preset.value}
+                          onClick={() => setDeliveryTime(preset.value)}
+                          className={`px-2.5 py-1.5 rounded-lg text-[11px] font-mono transition ${
+                            deliveryTime === preset.value
+                              ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 font-bold'
+                              : 'bg-slate-100 dark:bg-slate-800/80 text-slate-500 hover:text-slate-900 dark:hover:text-white border border-transparent'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cadence Specific Option: Weekly Day Picker */}
+                {newsletterPrefs.frequency === 'weekly' && (
+                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Day of the Week:
+                    </label>
+                    <div className="grid grid-cols-7 gap-1.5">
+                      {DAYS_OF_WEEK.map((day) => (
+                        <button
+                          key={day.value}
+                          onClick={() => setDeliveryDayOfWeek(day.value)}
+                          className={`py-2 rounded-xl text-xs font-mono font-bold transition border ${
+                            deliveryDayOfWeek === day.value
+                              ? 'bg-purple-500 text-white border-purple-500 shadow-sm'
+                              : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-purple-400'
+                          }`}
+                        >
+                          {day.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Cadence Specific Option: Monthly Day Picker */}
+                {newsletterPrefs.frequency === 'monthly' && (
+                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Day of the Month:
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {DAYS_OF_MONTH.map((d) => (
+                        <button
+                          key={d.value}
+                          onClick={() => setDeliveryDayOfMonth(d.value)}
+                          className={`py-2 px-3 rounded-xl text-xs font-mono font-bold transition border text-center ${
+                            deliveryDayOfMonth === d.value
+                              ? 'bg-purple-500 text-white border-purple-500 shadow-sm'
+                              : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-purple-400'
+                          }`}
+                        >
+                          {d.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Dynamic Schedule Status Banner */}
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2.5 h-2.5 rounded-full ${scheduleEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                      <strong>Scheduled Delivery:</strong> {getNextDeliveryDescription()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Save Schedule Action Button */}
+                <div className="flex items-center gap-3 pt-1">
+                  <button
+                    onClick={handleSaveSchedule}
+                    disabled={isSavingSchedule || !targetEmail}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 dark:bg-cyan-600 dark:hover:bg-cyan-500 transition shadow-sm disabled:opacity-50"
+                  >
+                    {isSavingSchedule ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Saving Schedule...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        <span>Save & Activate Schedule</span>
+                      </>
+                    )}
+                  </button>
+
+                  {saveFeedback && (
+                    <span className="text-xs text-emerald-500 dark:text-emerald-400 font-medium flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      {saveFeedback}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Topical Categories */}
             <div className="p-6 rounded-2xl bg-white dark:bg-[#0f1629] border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-3">
@@ -335,23 +654,44 @@ export default function NewsletterPage() {
               </div>
             </div>
 
-            {/* Test Email Action Button & Feedback Card */}
+            {/* Test Email Action Buttons & Feedback Card */}
             <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-3">
+                {/* Send Sample Newsletter Preview */}
                 <button
-                  onClick={handleSendTest}
-                  disabled={isSending || !targetEmail}
+                  onClick={handleSendSample}
+                  disabled={isSendingSample || isTriggeringScheduled || !targetEmail}
                   className="flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 shadow-lg shadow-cyan-500/25 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSending ? (
+                  {isSendingSample ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Compiling & Dispatching Brief...</span>
+                      <span>Compiling & Dispatching Sample...</span>
                     </>
                   ) : (
                     <>
                       <Send className="w-4 h-4" />
                       <span>Send Sample Newsletter Preview</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Trigger Scheduled Delivery Now */}
+                <button
+                  onClick={handleTriggerScheduledNow}
+                  disabled={isTriggeringScheduled || isSendingSample || !targetEmail}
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-100 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition disabled:opacity-50"
+                  title="Test the exact automated schedule dispatch right now"
+                >
+                  {isTriggeringScheduled ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+                      <span>Dispatching Scheduled Email...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 text-purple-400" />
+                      <span>Trigger Scheduled Dispatch Now</span>
                     </>
                   )}
                 </button>
@@ -381,7 +721,7 @@ export default function NewsletterPage() {
                         {!sendResult.success
                           ? 'Dispatch Error'
                           : sendResult.mode === 'ethereal_preview'
-                          ? `Simulated Web Preview (No Real Email Sent)`
+                          ? `Simulated Web Preview (No Live Provider Detected)`
                           : `Email Delivered to ${sendResult.deliveredTo}`}
                       </div>
                       <p className="leading-relaxed opacity-90">{sendResult.message || sendResult.error}</p>
@@ -421,7 +761,10 @@ export default function NewsletterPage() {
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                 <span className="font-mono text-[10px] uppercase text-cyan-400 font-bold flex items-center gap-1.5">
                   <Eye className="w-3.5 h-3.5" />
-                  Compiled Email Preview
+                  Live Compiled Email Preview
+                </span>
+                <span className="text-[10px] font-mono text-purple-400 font-bold uppercase">
+                  {newsletterPrefs.frequency} Briefing
                 </span>
               </div>
 
@@ -434,7 +777,7 @@ export default function NewsletterPage() {
                     <span className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-1">
                       <span>Te</span>
                       <span className="bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent">Q</span>
-                      <span>Vu Brief</span>
+                      <span>Vu {newsletterPrefs.frequency === 'weekly' ? 'Weekly' : newsletterPrefs.frequency === 'monthly' ? 'Monthly' : 'Daily'} Brief</span>
                     </span>
                   </div>
                   <span className="text-[10px] font-mono text-slate-400">
@@ -446,7 +789,7 @@ export default function NewsletterPage() {
                 <div>
                   <div className="text-[10px] font-mono uppercase text-purple-400 font-bold mb-1 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                    1. Top Development &bull; {previewArticle.source.name.split(' ')[0]}
+                    1. Important Development &bull; {previewArticle.source.name}
                   </div>
                   <div className="font-bold text-slate-900 dark:text-slate-100 text-xs leading-snug line-clamp-2">
                     {previewArticle.title}
@@ -460,7 +803,7 @@ export default function NewsletterPage() {
                 <div>
                   <div className="text-[10px] font-mono uppercase text-cyan-400 font-bold mb-1 flex items-center gap-1">
                     <Flame className="w-3 h-3 text-cyan-400" />
-                    2. Emerging Signal Detected
+                    2. Trending Open-Source Velocity
                   </div>
                   <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
                     <span>{previewTech.name}</span>
@@ -468,7 +811,7 @@ export default function NewsletterPage() {
                       +{previewTech.growth}% Velocity
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">
+                  <p className="text-[10px] text-slate-400 line-clamp-2 mt-0.5">
                     {previewTech.description}
                   </p>
                 </div>
@@ -482,8 +825,11 @@ export default function NewsletterPage() {
                   <div className="font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">
                     {previewPaper.title}
                   </div>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    {previewPaper.source} &bull; {previewPaper.authors[0] || 'Researchers'} et al.
+                  <p className="text-[10px] text-slate-400 line-clamp-2 mt-0.5">
+                    {previewPaper.summary}
+                  </p>
+                  <span className="text-[10px] text-slate-400 font-mono block mt-1">
+                    {previewPaper.source} &bull; {previewPaper.authors[0]}
                   </span>
                 </div>
 
@@ -496,9 +842,9 @@ export default function NewsletterPage() {
 
               {/* Unsubscribe footer */}
               <div className="text-center pt-2 text-[10px] text-slate-400 space-y-1">
-                <div>You are receiving this sample because you triggered a preview in TeQVu.</div>
-                <div className="text-cyan-400 font-medium">
-                  Configured Frequency: <span className="capitalize">{newsletterPrefs.frequency}</span>
+                <div>Automated schedule: <span className="text-cyan-400 font-medium">{getNextDeliveryDescription()}</span></div>
+                <div className="text-slate-500">
+                  Attribution: Content verified from official RSS feeds and APIs.
                 </div>
               </div>
             </div>
@@ -507,11 +853,21 @@ export default function NewsletterPage() {
 
         {/* 3. ALERT DISPATCH HISTORY */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-cyan-400" />
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              Recent Dispatched Alerts Log (Anti-Spam Verification)
-            </h2>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-cyan-400" />
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                Recent Dispatched Briefings & Delivery Audit Log
+              </h2>
+            </div>
+            <button
+              onClick={fetchScheduleAndLogs}
+              disabled={isLoadingLogs}
+              className="text-xs font-mono text-cyan-500 hover:text-cyan-400 flex items-center gap-1 transition"
+            >
+              <RotateCw className={`w-3.5 h-3.5 ${isLoadingLogs ? 'animate-spin' : ''}`} />
+              <span>Refresh Log</span>
+            </button>
           </div>
 
           <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0f1629] overflow-hidden">
@@ -519,63 +875,59 @@ export default function NewsletterPage() {
               <thead className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200/80 dark:border-slate-800/80 text-slate-400 font-mono uppercase tracking-wider text-[10px]">
                 <tr>
                   <th className="py-3 px-4">Timestamp</th>
-                  <th className="py-3 px-4">Trigger Reason</th>
+                  <th className="py-3 px-4">Type / Cadence</th>
+                  <th className="py-3 px-4">Recipient</th>
                   <th className="py-3 px-4">Subject</th>
-                  <th className="py-3 px-4">Sources Corroborated</th>
+                  <th className="py-3 px-4">Delivery Mode</th>
                   <th className="py-3 px-4 text-right">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {[
-                  {
-                    time: 'Today, Just now',
-                    reason: 'Sample Preview Triggered on Demand',
-                    subject: 'TeQVu Daily Brief: Real-Time Tech Intelligence',
-                    sources: 'Reuters · BBC · Digital Trends · arXiv',
-                    status: 'Dispatched',
-                  },
-                  {
-                    time: 'Today, 08:30 AM',
-                    reason: 'Velocity > 100% threshold',
-                    subject: 'Breakthrough: LLM Agents Autonomous Workflows',
-                    sources: '74 independent sources',
-                    status: 'Delivered',
-                  },
-                  {
-                    time: 'Yesterday, 14:15 PM',
-                    reason: 'Watchlist Tech Priority Update',
-                    subject: 'Rust Production Drivers Merged into Linux',
-                    sources: '38 independent sources',
-                    status: 'Delivered',
-                  },
-                  {
-                    time: 'Sep 21, 2026',
-                    reason: 'Suppressed by Quiet Hours Filter',
-                    subject: 'Quantum Computing Surface Code Breakthrough',
-                    sources: '12 independent sources',
-                    status: 'Suppressed (Anti-Spam)',
-                  },
-                ].map((row, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-900/40 font-mono">
-                    <td className="py-3 px-4 text-slate-400">{row.time}</td>
-                    <td className="py-3 px-4 text-slate-300">{row.reason}</td>
-                    <td className="py-3 px-4 font-semibold text-slate-900 dark:text-white font-sans">
-                      {row.subject}
-                    </td>
-                    <td className="py-3 px-4 text-cyan-400">{row.sources}</td>
-                    <td className="py-3 px-4 text-right">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          row.status.includes('Suppressed')
-                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                            : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        }`}
-                      >
-                        {row.status}
-                      </span>
+                {deliveryLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-slate-400 font-mono text-xs">
+                      No email dispatches recorded yet. Use the buttons above to send a preview or activate automated schedule.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  deliveryLogs.map((row) => (
+                    <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/40 font-mono">
+                      <td className="py-3 px-4 text-slate-400">
+                        {new Date(row.timestamp).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </td>
+                      <td className="py-3 px-4 font-bold capitalize text-cyan-400">
+                        {row.frequency}
+                      </td>
+                      <td className="py-3 px-4 text-slate-400 truncate max-w-[150px]">
+                        {row.email}
+                      </td>
+                      <td className="py-3 px-4 font-semibold text-slate-900 dark:text-white font-sans truncate max-w-[280px]">
+                        {row.subject}
+                      </td>
+                      <td className="py-3 px-4 text-slate-400 uppercase text-[10px]">
+                        {row.mode}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            row.status === 'delivered'
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : row.status === 'simulated'
+                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                              : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                          }`}
+                        >
+                          {row.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
