@@ -275,7 +275,7 @@ export function buildNewsletterHtml(params: {
   trends: EmailTrend[];
   paper?: EmailPaper;
   isAutomated?: boolean;
-}): { html: string; subject: string } {
+}): { html: string; subject: string; text: string } {
   const { recipientEmail, categories, frequency, articles, trends, paper, isAutomated } = params;
 
   const now = new Date();

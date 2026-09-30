@@ -127,6 +127,16 @@
       "status": "delivered",
       "mode": "resend",
       "messageId": "01a0f0d0-0adc-737e-8962-f2c53446f0d8"
+    },
+    {
+      "id": "log_1790747170844_w7ta1",
+      "timestamp": "2026-09-30T05:46:10.844Z",
+      "email": "sgdesilva1113@gmail.com",
+      "frequency": "sample",
+      "subject": "TeQVu Daily Brief — Sep 30: Real-Time Tech Intelligence",
+      "status": "delivered",
+      "mode": "resend",
+      "messageId": "01a0f0d9-5551-7325-b2c6-c2fc69b51dc6"
     }
   ]
 }
