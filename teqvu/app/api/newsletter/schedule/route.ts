@@ -4,16 +4,15 @@ import {
   updateStoredSchedule,
   getDeliveryLogs,
 } from '../../../../lib/services/newsletterScheduleStore';
-import { initScheduler } from '../../../../lib/services/newsletterScheduler';
+import { runDueSchedulesCheck } from '../../../../lib/services/newsletterScheduler';
 import { sendNewsletter } from '../../../../lib/services/newsletterMailer';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  initScheduler();
   try {
-    const schedule = getStoredSchedule();
-    const logs = getDeliveryLogs();
+    const schedule = await getStoredSchedule();
+    const logs = await getDeliveryLogs();
 
     return NextResponse.json({
       success: true,
@@ -26,7 +25,6 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  initScheduler();
   try {
     const body = await request.json();
 
@@ -41,7 +39,7 @@ export async function POST(request: Request) {
     if (Array.isArray(body.categories)) updates.categories = body.categories;
     if (typeof body.enabled === 'boolean') updates.enabled = body.enabled;
 
-    const updatedSchedule = updateStoredSchedule(updates);
+    const updatedSchedule = await updateStoredSchedule(updates);
 
     return NextResponse.json({
       success: true,
@@ -54,10 +52,9 @@ export async function POST(request: Request) {
 }
 
 // PUT triggers manual dispatch of the configured schedule on demand
-export async function PUT(request: Request) {
-  initScheduler();
+export async function PUT() {
   try {
-    const schedule = getStoredSchedule();
+    const schedule = await getStoredSchedule();
 
     if (!schedule.email) {
       return NextResponse.json(
@@ -73,7 +70,7 @@ export async function PUT(request: Request) {
       isAutomated: false,
     });
 
-    const logs = getDeliveryLogs();
+    const logs = await getDeliveryLogs();
 
     return NextResponse.json({
       success: result.success,

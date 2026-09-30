@@ -1,26 +1,45 @@
-import fs from 'fs';
-import path from 'path';
+/**
+ * newsletterScheduleStore.ts
+ *
+ * Hybrid persistent store for newsletter schedules and delivery logs.
+ *
+ * Strategy:
+ *  - Uses an in-memory cache (works in all environments instantly).
+ *  - On non-Vercel (local dev): also persists to local filesystem under data/.
+ *  - On Vercel: persists to Supabase KV via a simple key/value JSON column.
+ *    Falls back to in-memory when Supabase is unavailable.
+ *
+ * This ensures the profile page schedule settings survive across Vercel
+ * serverless function invocations (which reset /tmp between calls).
+ */
+
 import type { NewsletterSchedule, DeliveryLog } from '../types';
 
-const isVercel = Boolean(
-  process.env.VERCEL ||
-  process.env.NEXT_PUBLIC_VERCEL_ENV ||
-  process.env.AWS_LAMBDA_FUNCTION_NAME
-);
-const DATA_DIR = isVercel ? '/tmp' : path.join(process.cwd(), 'data');
-const SCHEDULE_FILE = path.join(DATA_DIR, 'newsletter-schedules.json');
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface StoredData {
   schedule: NewsletterSchedule;
   logs: DeliveryLog[];
 }
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const isVercel = Boolean(
+  process.env.VERCEL ||
+  process.env.NEXT_PUBLIC_VERCEL_ENV ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME
+);
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const STORE_KEY = 'newsletter_schedule_v1';
+
 const DEFAULT_SCHEDULE: NewsletterSchedule = {
   id: 'default',
   email: 'sgdesilva1113@gmail.com',
   frequency: 'daily',
   deliveryTime: '08:30',
-  deliveryDayOfWeek: 1, // Monday
+  deliveryDayOfWeek: 1,
   deliveryDayOfMonth: 1,
   categories: ['AI/ML', 'Cloud Computing', 'Cybersecurity', 'Software Engineering', 'Languages'],
   enabled: true,
@@ -30,78 +49,166 @@ const DEFAULT_SCHEDULE: NewsletterSchedule = {
   updatedAt: new Date().toISOString(),
 };
 
-function ensureDataFile(): StoredData {
+// ─── In-Memory Cache (survives within a single serverless invocation) ─────────
+
+let _memCache: StoredData | null = null;
+
+function getMemCache(): StoredData {
+  if (!_memCache) {
+    _memCache = {
+      schedule: { ...DEFAULT_SCHEDULE },
+      logs: [],
+    };
+  }
+  return _memCache;
+}
+
+function setMemCache(data: StoredData): void {
+  _memCache = data;
+}
+
+// ─── Supabase KV Persistence (for Vercel cross-invocation persistence) ────────
+
+async function loadFromSupabase(): Promise<StoredData | null> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
   try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/app_kv_store?key=eq.${encodeURIComponent(STORE_KEY)}&select=value`,
+      {
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(3000),
+      }
+    );
+    if (!res.ok) return null;
+    const rows: Array<{ value: any }> = await res.json();
+    if (!rows || rows.length === 0) return null;
+    const parsed = typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value;
+    return {
+      schedule: { ...DEFAULT_SCHEDULE, ...parsed.schedule },
+      logs: Array.isArray(parsed.logs) ? parsed.logs : [],
+    };
+  } catch {
+    return null;
+  }
+}
 
-    if (!fs.existsSync(SCHEDULE_FILE)) {
-      const initial: StoredData = {
-        schedule: DEFAULT_SCHEDULE,
-        logs: [
-          {
-            id: `log_init_${Date.now()}`,
-            timestamp: new Date(Date.now() - 3600000 * 24).toISOString(),
-            email: 'sgdesilva1113@gmail.com',
-            frequency: 'daily',
-            subject: 'TeQVu Daily Brief: Real-Time Tech Intelligence',
-            status: 'delivered',
-            mode: 'resend',
-            messageId: 'msg_init_sample',
-          },
-        ],
-      };
-      fs.writeFileSync(SCHEDULE_FILE, JSON.stringify(initial, null, 2), 'utf-8');
-      return initial;
-    }
+async function saveToSupabase(data: StoredData): Promise<void> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/app_kv_store`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify({
+        key: STORE_KEY,
+        value: JSON.stringify(data),
+        updated_at: new Date().toISOString(),
+      }),
+      signal: AbortSignal.timeout(3000),
+    });
+  } catch {
+    // Supabase unavailable – in-memory cache is still valid for this invocation
+  }
+}
 
-    const content = fs.readFileSync(SCHEDULE_FILE, 'utf-8');
+// ─── Local Filesystem Persistence (for local dev, non-Vercel) ─────────────────
+
+async function loadFromFilesystem(): Promise<StoredData | null> {
+  if (isVercel) return null;
+  try {
+    const fs = await import('fs');
+    const path = await import('path');
+    const dataDir = path.join(process.cwd(), 'data');
+    const scheduleFile = path.join(dataDir, 'newsletter-schedules.json');
+    if (!fs.existsSync(scheduleFile)) return null;
+    const content = fs.readFileSync(scheduleFile, 'utf-8');
     const parsed = JSON.parse(content);
     return {
       schedule: { ...DEFAULT_SCHEDULE, ...parsed.schedule },
       logs: Array.isArray(parsed.logs) ? parsed.logs : [],
     };
-  } catch (err) {
-    console.error('Error reading schedule store file, using fallback memory:', err);
-    return { schedule: DEFAULT_SCHEDULE, logs: [] };
+  } catch {
+    return null;
   }
 }
 
-function writeDataFile(data: StoredData): void {
+async function saveToFilesystem(data: StoredData): Promise<void> {
+  if (isVercel) return;
   try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(SCHEDULE_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    const fs = await import('fs');
+    const path = await import('path');
+    const dataDir = path.join(process.cwd(), 'data');
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    const scheduleFile = path.join(dataDir, 'newsletter-schedules.json');
+    fs.writeFileSync(scheduleFile, JSON.stringify(data, null, 2), 'utf-8');
   } catch (err) {
-    console.error('Error saving schedule store file:', err);
+    console.error('Error saving schedule to filesystem:', err);
   }
 }
 
-export function getStoredSchedule(): NewsletterSchedule {
-  const data = ensureDataFile();
+// ─── Public Load / Save ───────────────────────────────────────────────────────
+
+async function loadData(): Promise<StoredData> {
+  // 1. Return in-memory cache if already populated in this invocation
+  if (_memCache) return _memCache;
+
+  // 2. Try persistent storage
+  let loaded: StoredData | null = null;
+  if (isVercel) {
+    loaded = await loadFromSupabase();
+  } else {
+    loaded = await loadFromFilesystem();
+  }
+
+  const data = loaded || { schedule: { ...DEFAULT_SCHEDULE }, logs: [] };
+  setMemCache(data);
+  return data;
+}
+
+async function saveData(data: StoredData): Promise<void> {
+  setMemCache(data);
+  if (isVercel) {
+    await saveToSupabase(data);
+  } else {
+    await saveToFilesystem(data);
+  }
+}
+
+// ─── Public API (async) ───────────────────────────────────────────────────────
+
+export async function getStoredSchedule(): Promise<NewsletterSchedule> {
+  const data = await loadData();
   return data.schedule;
 }
 
-export function updateStoredSchedule(updates: Partial<NewsletterSchedule>): NewsletterSchedule {
-  const data = ensureDataFile();
+export async function updateStoredSchedule(updates: Partial<NewsletterSchedule>): Promise<NewsletterSchedule> {
+  const data = await loadData();
   data.schedule = {
     ...data.schedule,
     ...updates,
     updatedAt: new Date().toISOString(),
   };
-  writeDataFile(data);
+  await saveData(data);
   return data.schedule;
 }
 
-export function getDeliveryLogs(): DeliveryLog[] {
-  const data = ensureDataFile();
+export async function getDeliveryLogs(): Promise<DeliveryLog[]> {
+  const data = await loadData();
   return data.logs.slice(-50).reverse(); // newest first
 }
 
-export function addDeliveryLog(log: Omit<DeliveryLog, 'id' | 'timestamp'> & { id?: string; timestamp?: string }): DeliveryLog {
-  const data = ensureDataFile();
+export async function addDeliveryLog(
+  log: Omit<DeliveryLog, 'id' | 'timestamp'> & { id?: string; timestamp?: string }
+): Promise<DeliveryLog> {
+  const data = await loadData();
   const newLog: DeliveryLog = {
     id: log.id || `log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
     timestamp: log.timestamp || new Date().toISOString(),
@@ -115,18 +222,17 @@ export function addDeliveryLog(log: Omit<DeliveryLog, 'id' | 'timestamp'> & { id
   };
 
   data.logs.push(newLog);
-  // Keep last 100 logs
   if (data.logs.length > 100) {
     data.logs = data.logs.slice(-100);
   }
 
-  writeDataFile(data);
+  await saveData(data);
   return newLog;
 }
 
-export function markScheduleSent(frequency: 'daily' | 'weekly' | 'monthly'): void {
-  const data = ensureDataFile();
+export async function markScheduleSent(frequency: 'daily' | 'weekly' | 'monthly'): Promise<void> {
+  const data = await loadData();
   data.schedule.lastSentAt = new Date().toISOString();
   data.schedule.lastSentCadence = frequency;
-  writeDataFile(data);
+  await saveData(data);
 }

@@ -1,30 +1,27 @@
-import { getStoredSchedule } from './newsletterScheduleStore';
+import { getStoredSchedule, markScheduleSent } from './newsletterScheduleStore';
 import { sendNewsletter } from './newsletterMailer';
 
-let isSchedulerRunning = false;
-let checkInterval: NodeJS.Timeout | null = null;
-
 /**
- * Format local time as HH:MM (24-hr)
+ * Format UTC time as HH:MM (24-hr) — use UTC to match Vercel cron which runs in UTC
  */
-function getCurrentTimeString(): string {
+function getCurrentTimeStringUTC(): string {
   const now = new Date();
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const hours = String(now.getUTCHours()).padStart(2, '0');
+  const minutes = String(now.getUTCMinutes()).padStart(2, '0');
   return `${hours}:${minutes}`;
 }
 
 /**
- * Check if a timestamp is from the same calendar day (local)
+ * Check if a timestamp is from the same UTC calendar day
  */
-function isSameDay(isoString?: string | null): boolean {
+function isSameDayUTC(isoString?: string | null): boolean {
   if (!isoString) return false;
   const d = new Date(isoString);
   const now = new Date();
   return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
+    d.getUTCFullYear() === now.getUTCFullYear() &&
+    d.getUTCMonth() === now.getUTCMonth() &&
+    d.getUTCDate() === now.getUTCDate()
   );
 }
 
@@ -46,6 +43,8 @@ function getMinutesDifference(current: string, target: string): number {
 
 /**
  * Evaluates active schedules and dispatches emails if the scheduled time has arrived.
+ * Called by the Vercel cron job at /api/newsletter/cron (runs every hour in UTC).
+ * Also callable manually from the schedule PUT endpoint.
  */
 export async function runDueSchedulesCheck(): Promise<{
   checked: boolean;
@@ -53,39 +52,40 @@ export async function runDueSchedulesCheck(): Promise<{
   reason?: string;
   schedule?: any;
 }> {
-  const schedule = getStoredSchedule();
+  const schedule = await getStoredSchedule();
 
   if (!schedule || !schedule.enabled || schedule.frequency === 'disabled' || !schedule.email) {
     return { checked: true, dispatched: false, reason: 'Schedule disabled or unconfigured' };
   }
 
   const now = new Date();
-  const currentTime = getCurrentTimeString();
-  const currentDayOfWeek = now.getDay(); // 0 = Sun, 1 = Mon ...
-  const currentDayOfMonth = now.getDate(); // 1 ... 31
+  const currentTime = getCurrentTimeStringUTC();
+  const currentDayOfWeek = now.getUTCDay();
+  const currentDayOfMonth = now.getUTCDate();
 
   const targetTime = schedule.deliveryTime || '09:00';
 
-  // Compare hours and minutes with a 2-minute grace window
+  // Compare hours and minutes with a generous 60-minute window
+  // (cron fires every hour, so we use a 55-minute window to be safe)
   const diffMinutes = getMinutesDifference(currentTime, targetTime);
-  const isTimeMatch = diffMinutes >= 0 && diffMinutes <= 2;
+  const isTimeMatch = diffMinutes >= 0 && diffMinutes <= 55;
 
   let isDue = false;
   let cadenceNote = '';
 
   if (schedule.frequency === 'daily') {
-    if (isTimeMatch && !isSameDay(schedule.lastSentAt)) {
+    if (isTimeMatch && !isSameDayUTC(schedule.lastSentAt)) {
       isDue = true;
       cadenceNote = 'Daily scheduled delivery time reached';
     }
   } else if (schedule.frequency === 'weekly') {
-    const targetDayOfWeek = schedule.deliveryDayOfWeek ?? 1; // default Monday
+    const targetDayOfWeek = schedule.deliveryDayOfWeek ?? 1;
     if (currentDayOfWeek === targetDayOfWeek && isTimeMatch && !wasSentWithinDays(schedule.lastSentAt, 6)) {
       isDue = true;
       cadenceNote = 'Weekly scheduled delivery day and time reached';
     }
   } else if (schedule.frequency === 'monthly') {
-    const targetDayOfMonth = schedule.deliveryDayOfMonth ?? 1; // default 1st
+    const targetDayOfMonth = schedule.deliveryDayOfMonth ?? 1;
     if (currentDayOfMonth === targetDayOfMonth && isTimeMatch && !wasSentWithinDays(schedule.lastSentAt, 25)) {
       isDue = true;
       cadenceNote = 'Monthly scheduled delivery day and time reached';
@@ -101,6 +101,8 @@ export async function runDueSchedulesCheck(): Promise<{
         frequency: schedule.frequency,
         isAutomated: true,
       });
+
+      await markScheduleSent(schedule.frequency as 'daily' | 'weekly' | 'monthly');
 
       return {
         checked: true,
@@ -122,25 +124,17 @@ export async function runDueSchedulesCheck(): Promise<{
   return {
     checked: true,
     dispatched: false,
-    reason: `Not due (Current: ${currentTime}, Target: ${targetTime}, Freq: ${schedule.frequency})`,
+    reason: `Not due (Current UTC: ${currentTime}, Target: ${targetTime}, Freq: ${schedule.frequency})`,
     schedule,
   };
 }
 
 /**
- * Initializes autonomous background scheduler loop in Node.js server.
+ * No-op on Vercel: the cron job in vercel.json handles scheduling.
+ * On local dev this is also unnecessary since the cron won't fire.
+ * Kept for backward compatibility; callers may still invoke it safely.
  */
 export function initScheduler(): void {
-  if (isSchedulerRunning) return;
-  isSchedulerRunning = true;
-
-  console.log('[Scheduler] Background Newsletter Scheduler initialized (30s polling cycle)');
-
-  // Run initial check
-  runDueSchedulesCheck().catch((err) => console.error('[Scheduler] Initial check error:', err));
-
-  // Run recurring check every 30 seconds
-  checkInterval = setInterval(() => {
-    runDueSchedulesCheck().catch((err) => console.error('[Scheduler] Interval check error:', err));
-  }, 30000);
+  // Intentionally empty — scheduling is handled by the Vercel cron job.
+  // setInterval does not survive serverless function termination.
 }

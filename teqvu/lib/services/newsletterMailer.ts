@@ -66,7 +66,7 @@ export async function sendNewsletter(options: SendNewsletterOptions): Promise<Ma
         const msgId = resendResponse.data?.id || `resend_${Date.now()}`;
 
         // Log successful delivery
-        addDeliveryLog({
+        await addDeliveryLog({
           email: targetEmail,
           frequency: isPreview ? 'sample' : (frequency as any),
           subject,
@@ -76,7 +76,7 @@ export async function sendNewsletter(options: SendNewsletterOptions): Promise<Ma
         });
 
         if (!isPreview && frequency !== 'disabled') {
-          markScheduleSent(frequency);
+          await markScheduleSent(frequency);
         }
 
         return {
@@ -113,7 +113,7 @@ export async function sendNewsletter(options: SendNewsletterOptions): Promise<Ma
           text,
         });
 
-        addDeliveryLog({
+        await addDeliveryLog({
           email: targetEmail,
           frequency: isPreview ? 'sample' : (frequency as any),
           subject,
@@ -123,7 +123,7 @@ export async function sendNewsletter(options: SendNewsletterOptions): Promise<Ma
         });
 
         if (!isPreview && frequency !== 'disabled') {
-          markScheduleSent(frequency);
+          await markScheduleSent(frequency);
         }
 
         return {
@@ -140,7 +140,7 @@ export async function sendNewsletter(options: SendNewsletterOptions): Promise<Ma
 
     // If Resend failed with explicit error, report directly
     if (resendError) {
-      addDeliveryLog({
+      await addDeliveryLog({
         email: targetEmail,
         frequency: isPreview ? 'sample' : (frequency as any),
         subject,
@@ -178,7 +178,7 @@ export async function sendNewsletter(options: SendNewsletterOptions): Promise<Ma
 
     const previewUrl = nodemailer.getTestMessageUrl(info) || undefined;
 
-    addDeliveryLog({
+    await addDeliveryLog({
       email: targetEmail,
       frequency: isPreview ? 'sample' : (frequency as any),
       subject,
@@ -197,7 +197,7 @@ export async function sendNewsletter(options: SendNewsletterOptions): Promise<Ma
     };
   } catch (error: any) {
     console.error('Error dispatching newsletter:', error);
-    addDeliveryLog({
+    await addDeliveryLog({
       email: targetEmail,
       frequency: isPreview ? 'sample' : (frequency as any),
       subject: 'TeQVu Digest Dispatch Failed',
