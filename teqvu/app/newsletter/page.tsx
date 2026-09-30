@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import {
   Mail,
   ShieldCheck,
@@ -18,7 +19,6 @@ import {
   BookOpen,
   Info,
   Play,
-  Save,
   RotateCw,
   Sparkles,
 } from 'lucide-react';
@@ -27,44 +27,15 @@ import { useAppStore } from '../../lib/store/useAppStore';
 import { Logo } from '../../components/ui/Logo';
 import type { DeliveryLog } from '../../lib/types';
 
-const DAYS_OF_WEEK = [
-  { label: 'Mon', value: 1, name: 'Monday' },
-  { label: 'Tue', value: 2, name: 'Tuesday' },
-  { label: 'Wed', value: 3, name: 'Wednesday' },
-  { label: 'Thu', value: 4, name: 'Thursday' },
-  { label: 'Fri', value: 5, name: 'Friday' },
-  { label: 'Sat', value: 6, name: 'Saturday' },
-  { label: 'Sun', value: 0, name: 'Sunday' },
-];
-
-const DAYS_OF_MONTH = [
-  { label: '1st of month', value: 1 },
-  { label: '15th of month', value: 15 },
-  { label: 'End of month (28th)', value: 28 },
-];
-
-const TIME_PRESETS = [
-  { label: '08:00 AM (Morning)', value: '08:00' },
-  { label: '09:30 AM (Workday)', value: '09:30' },
-  { label: '13:00 PM (Midday)', value: '13:00' },
-  { label: '18:00 PM (Wrap-up)', value: '18:00' },
-];
-
 export default function NewsletterPage() {
   const { newsletterPrefs, updateNewsletterPrefs, currentUser } = useAppStore();
 
   const [targetEmail, setTargetEmail] = useState(
     newsletterPrefs.scheduledEmail || currentUser?.email || 'sgdesilva1113@gmail.com'
   );
-  const [deliveryTime, setDeliveryTime] = useState(newsletterPrefs.deliveryTime || '08:30');
-  const [deliveryDayOfWeek, setDeliveryDayOfWeek] = useState(newsletterPrefs.deliveryDayOfWeek ?? 1);
-  const [deliveryDayOfMonth, setDeliveryDayOfMonth] = useState(newsletterPrefs.deliveryDayOfMonth ?? 1);
-  const [scheduleEnabled, setScheduleEnabled] = useState(newsletterPrefs.scheduleEnabled ?? true);
 
   const [isSendingSample, setIsSendingSample] = useState(false);
   const [isTriggeringScheduled, setIsTriggeringScheduled] = useState(false);
-  const [isSavingSchedule, setIsSavingSchedule] = useState(false);
-  const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
 
   const [sendResult, setSendResult] = useState<{
     success: boolean;
@@ -106,18 +77,8 @@ export default function NewsletterPage() {
       const res = await fetch('/api/newsletter/schedule');
       if (res.ok) {
         const data = await res.json();
-        if (data.schedule) {
-          if (data.schedule.email) setTargetEmail(data.schedule.email);
-          if (data.schedule.deliveryTime) setDeliveryTime(data.schedule.deliveryTime);
-          if (typeof data.schedule.deliveryDayOfWeek === 'number') {
-            setDeliveryDayOfWeek(data.schedule.deliveryDayOfWeek);
-          }
-          if (typeof data.schedule.deliveryDayOfMonth === 'number') {
-            setDeliveryDayOfMonth(data.schedule.deliveryDayOfMonth);
-          }
-          if (typeof data.schedule.enabled === 'boolean') {
-            setScheduleEnabled(data.schedule.enabled);
-          }
+        if (data.schedule?.email) {
+          setTargetEmail(data.schedule.email);
         }
         if (Array.isArray(data.logs)) {
           setDeliveryLogs(data.logs);
@@ -152,50 +113,6 @@ export default function NewsletterPage() {
       ? newsletterPrefs.categories.filter((c) => c !== cat)
       : [...newsletterPrefs.categories, cat];
     updateNewsletterPrefs({ categories: updated });
-  };
-
-  // Save Schedule to backend & store
-  const handleSaveSchedule = async () => {
-    setIsSavingSchedule(true);
-    setSaveFeedback(null);
-
-    const payload = {
-      email: targetEmail,
-      frequency: newsletterPrefs.frequency,
-      deliveryTime,
-      deliveryDayOfWeek,
-      deliveryDayOfMonth,
-      categories: newsletterPrefs.categories,
-      enabled: scheduleEnabled,
-    };
-
-    try {
-      const res = await fetch('/api/newsletter/schedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        updateNewsletterPrefs({
-          deliveryTime,
-          deliveryDayOfWeek,
-          deliveryDayOfMonth,
-          scheduledEmail: targetEmail,
-          scheduleEnabled,
-        });
-        setSaveFeedback('Schedule saved successfully! Automated delivery is active.');
-        setTimeout(() => setSaveFeedback(null), 5000);
-        fetchScheduleAndLogs();
-      } else {
-        setSaveFeedback(data.error || 'Failed to save delivery schedule.');
-      }
-    } catch (err: any) {
-      setSaveFeedback(err.message || 'Network error saving delivery schedule.');
-    } finally {
-      setIsSavingSchedule(false);
-    }
   };
 
   // Send Sample Newsletter Preview
@@ -276,32 +193,6 @@ export default function NewsletterPage() {
     }
   };
 
-  // Calculate human friendly next scheduled time
-  const getNextDeliveryDescription = () => {
-    if (!scheduleEnabled || newsletterPrefs.frequency === 'disabled') {
-      return 'Scheduled automated delivery is currently disabled.';
-    }
-
-    const [hh, mm] = deliveryTime.split(':').map(Number);
-    const timeFormatted = `${((hh % 12) || 12)}:${String(mm || 0).padStart(2, '0')} ${hh >= 12 ? 'PM' : 'AM'}`;
-
-    if (newsletterPrefs.frequency === 'daily') {
-      return `Daily at ${timeFormatted} to ${targetEmail}`;
-    }
-
-    if (newsletterPrefs.frequency === 'weekly') {
-      const dayObj = DAYS_OF_WEEK.find((d) => d.value === deliveryDayOfWeek) || DAYS_OF_WEEK[0];
-      return `Weekly every ${dayObj.name} at ${timeFormatted} to ${targetEmail}`;
-    }
-
-    if (newsletterPrefs.frequency === 'monthly') {
-      const dayLabel = deliveryDayOfMonth === 1 ? '1st' : deliveryDayOfMonth === 15 ? '15th' : '28th';
-      return `Monthly on the ${dayLabel} at ${timeFormatted} to ${targetEmail}`;
-    }
-
-    return `At ${timeFormatted} to ${targetEmail}`;
-  };
-
   return (
     <DashboardLayout>
       <div className="space-y-10">
@@ -315,7 +206,7 @@ export default function NewsletterPage() {
             Newsletter & Smart Alert Governance
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-3xl">
-            Configure your automated digest schedule, preferred time of delivery, topical categories, and anti-spam controls.
+            Configure topical categories, test live email dispatches, and inspect anti-spam rules. Automated delivery schedules & timers are managed in your Developer Profile.
           </p>
         </div>
 
@@ -400,161 +291,32 @@ export default function NewsletterPage() {
               </div>
             </div>
 
-            {/* AUTOMATED TIME & CADENCE SCHEDULING CARD */}
-            {newsletterPrefs.frequency !== 'disabled' && (
-              <div className="p-6 rounded-2xl bg-white dark:bg-[#0f1629] border border-cyan-500/40 dark:border-cyan-500/40 shadow-md shadow-cyan-500/5 space-y-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-cyan-500/10 dark:bg-cyan-500/20 flex items-center justify-center text-cyan-500">
-                      <Clock className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                        Delivery Time & Automated Schedule
-                      </h3>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        Set the exact time of day when your summary should automatically arrive.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Enable Schedule Toggle */}
-                  <label className="flex items-center gap-2 cursor-pointer text-xs">
-                    <span className="text-slate-400 text-[11px] font-medium hidden sm:inline">
-                      {scheduleEnabled ? 'Automation Active' : 'Automation Paused'}
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={scheduleEnabled}
-                      onChange={(e) => setScheduleEnabled(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-cyan-500"></div>
-                  </label>
+            {/* Automated Delivery Schedule & Timer Profile Link */}
+            <div className="p-5 rounded-2xl bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-blue-500/10 border border-cyan-500/30 dark:border-cyan-500/30 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/15 dark:bg-cyan-500/25 text-cyan-400 flex items-center justify-center shrink-0">
+                  <Clock className="w-5 h-5" />
                 </div>
-
-                {/* Delivery Time Input & Quick Presets */}
-                <div className="space-y-3 pt-1">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Preferred Time of Day:
-                  </label>
-                  
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                    <div className="relative">
-                      <input
-                        type="time"
-                        value={deliveryTime}
-                        onChange={(e) => setDeliveryTime(e.target.value)}
-                        className="px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                      />
-                    </div>
-
-                    {/* Quick Presets */}
-                    <div className="flex flex-wrap gap-1.5">
-                      {TIME_PRESETS.map((preset) => (
-                        <button
-                          key={preset.value}
-                          onClick={() => setDeliveryTime(preset.value)}
-                          className={`px-2.5 py-1.5 rounded-lg text-[11px] font-mono transition ${
-                            deliveryTime === preset.value
-                              ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 font-bold'
-                              : 'bg-slate-100 dark:bg-slate-800/80 text-slate-500 hover:text-slate-900 dark:hover:text-white border border-transparent'
-                          }`}
-                        >
-                          {preset.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Cadence Specific Option: Weekly Day Picker */}
-                {newsletterPrefs.frequency === 'weekly' && (
-                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Day of the Week:
-                    </label>
-                    <div className="grid grid-cols-7 gap-1.5">
-                      {DAYS_OF_WEEK.map((day) => (
-                        <button
-                          key={day.value}
-                          onClick={() => setDeliveryDayOfWeek(day.value)}
-                          className={`py-2 rounded-xl text-xs font-mono font-bold transition border ${
-                            deliveryDayOfWeek === day.value
-                              ? 'bg-purple-500 text-white border-purple-500 shadow-sm'
-                              : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-purple-400'
-                          }`}
-                        >
-                          {day.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Cadence Specific Option: Monthly Day Picker */}
-                {newsletterPrefs.frequency === 'monthly' && (
-                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Day of the Month:
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      {DAYS_OF_MONTH.map((d) => (
-                        <button
-                          key={d.value}
-                          onClick={() => setDeliveryDayOfMonth(d.value)}
-                          className={`py-2 px-3 rounded-xl text-xs font-mono font-bold transition border text-center ${
-                            deliveryDayOfMonth === d.value
-                              ? 'bg-purple-500 text-white border-purple-500 shadow-sm'
-                              : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-purple-400'
-                          }`}
-                        >
-                          {d.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Dynamic Schedule Status Banner */}
-                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2.5 h-2.5 rounded-full ${scheduleEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-                    <span className="font-medium text-slate-700 dark:text-slate-300">
-                      <strong>Scheduled Delivery:</strong> {getNextDeliveryDescription()}
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    Automated Delivery Schedule & Delivery Timer
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 font-bold border border-cyan-500/30">
+                      Profile Feature
                     </span>
-                  </div>
-                </div>
-
-                {/* Save Schedule Action Button */}
-                <div className="flex items-center gap-3 pt-1">
-                  <button
-                    onClick={handleSaveSchedule}
-                    disabled={isSavingSchedule || !targetEmail}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 dark:bg-cyan-600 dark:hover:bg-cyan-500 transition shadow-sm disabled:opacity-50"
-                  >
-                    {isSavingSchedule ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Saving Schedule...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4" />
-                        <span>Save & Activate Schedule</span>
-                      </>
-                    )}
-                  </button>
-
-                  {saveFeedback && (
-                    <span className="text-xs text-emerald-500 dark:text-emerald-400 font-medium flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      {saveFeedback}
-                    </span>
-                  )}
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Configure your preferred daily, weekly, or monthly delivery time in your Developer Profile.
+                  </p>
                 </div>
               </div>
-            )}
+              <Link
+                href="/profile"
+                className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-cyan-500/20 whitespace-nowrap shrink-0"
+              >
+                <span>Configure Timer in Profile</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </Link>
+            </div>
 
             {/* Topical Categories */}
             <div className="p-6 rounded-2xl bg-white dark:bg-[#0f1629] border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-3">
@@ -842,9 +604,14 @@ export default function NewsletterPage() {
 
               {/* Unsubscribe footer */}
               <div className="text-center pt-2 text-[10px] text-slate-400 space-y-1">
-                <div>Automated schedule: <span className="text-cyan-400 font-medium">{getNextDeliveryDescription()}</span></div>
+                <div>
+                  Cadence: <span className="text-cyan-400 font-medium capitalize">{newsletterPrefs.frequency} briefing</span> •{' '}
+                  <Link href="/profile" className="text-cyan-500 hover:underline">
+                    Edit delivery timer in Profile &rarr;
+                  </Link>
+                </div>
                 <div className="text-slate-500">
-                  Attribution: Content verified from official RSS feeds and APIs.
+                  Attribution: Content compiled dynamically from verified RSS feeds, GitHub, and arXiv.
                 </div>
               </div>
             </div>
