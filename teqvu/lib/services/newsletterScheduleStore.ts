@@ -2,7 +2,12 @@ import fs from 'fs';
 import path from 'path';
 import type { NewsletterSchedule, DeliveryLog } from '../types';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+const isVercel = Boolean(
+  process.env.VERCEL ||
+  process.env.NEXT_PUBLIC_VERCEL_ENV ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME
+);
+const DATA_DIR = isVercel ? '/tmp' : path.join(process.cwd(), 'data');
 const SCHEDULE_FILE = path.join(DATA_DIR, 'newsletter-schedules.json');
 
 interface StoredData {
