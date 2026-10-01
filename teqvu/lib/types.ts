@@ -100,6 +100,8 @@ export interface Source {
   articlesCount: number;
   lastChecked: string;
   collectionFrequency: string;
+  isCustom?: boolean;
+  latencyMs?: number;
 }
 
 export interface ResearchPaper {
@@ -156,6 +158,10 @@ export interface JobPosting {
   postedAt: string;
   category: string;
   source: string;
+  country?: string;
+  isInternship?: boolean;
+  jobType?: 'Full-time' | 'Internship' | 'Contract' | 'Part-time';
+  linkedInUrl?: string;
   descriptionSnippet?: string;
   marketType?: 'emerging' | 'standard' | 'legacy-migration';
 }
@@ -260,6 +266,7 @@ export interface UserProfile {
   email: string;
   avatarUrl?: string;
   occupation: Occupation;
+  country?: string;
   interests: string[];
   followedTechs: string[];
   role: 'user' | 'admin';

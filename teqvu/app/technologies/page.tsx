@@ -16,9 +16,10 @@ import {
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { TechCard } from '../../components/cards/TechCard';
 import type { Technology } from '../../lib/types';
+import { ALL_CURATED_TECHNOLOGIES } from '../../lib/data/technologiesData';
 
 export default function TechnologiesPage() {
-  const [techList, setTechList] = useState<Technology[]>([]);
+  const [techList, setTechList] = useState<Technology[]>(ALL_CURATED_TECHNOLOGIES);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');

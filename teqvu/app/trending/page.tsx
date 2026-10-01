@@ -26,6 +26,7 @@ import { Sparkline } from '../../components/ui/Sparkline';
 import { formatGrowth, timeAgo } from '../../lib/utils';
 import { useAppStore } from '../../lib/store/useAppStore';
 import type { Technology, Article } from '../../lib/types';
+import { ALL_CURATED_TECHNOLOGIES } from '../../lib/data/technologiesData';
 
 type Timeframe = '24h' | '7d' | '30d' | '3m' | '1y';
 
@@ -61,7 +62,7 @@ export default function TrendingPage() {
   const [velocityMode, setVelocityMode] = useState<'rising' | 'falling'>('rising');
   const [sortColumn, setSortColumn] = useState<'rank' | 'score' | 'mentions' | 'growth'>('rank');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [allTechs, setAllTechs] = useState<Technology[]>([]);
+  const [allTechs, setAllTechs] = useState<Technology[]>(ALL_CURATED_TECHNOLOGIES);
   const [loadingTechs, setLoadingTechs] = useState(false);
   const [loadingNews, setLoadingNews] = useState(false);
   const [liveNews, setLiveNews] = useState<Article[]>([]);
@@ -260,7 +261,7 @@ export default function TrendingPage() {
               </div>
               <span className="text-[11px] font-mono text-emerald-400">Expanding adoption</span>
             </div>
-            {loadingTechs ? (
+            {loadingTechs && allTechs.length === 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {[1, 2, 3].map((i) => <div key={i} className="h-64 rounded-2xl bg-slate-100 dark:bg-slate-800/60 animate-pulse" />)}
               </div>
@@ -319,7 +320,7 @@ export default function TrendingPage() {
               </div>
               <span className="text-[11px] font-mono text-rose-400">Contraction phase</span>
             </div>
-            {loadingTechs ? (
+            {loadingTechs && allTechs.length === 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {[1, 2, 3].map((i) => <div key={i} className="h-64 rounded-2xl bg-slate-100 dark:bg-slate-800/60 animate-pulse" />)}
               </div>
@@ -420,7 +421,7 @@ export default function TrendingPage() {
             </div>
           </div>
 
-          {loadingTechs ? (
+          {loadingTechs && allTechs.length === 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[1, 2, 3, 4].map((i) => <div key={i} className="h-16 rounded-xl bg-slate-100 dark:bg-slate-800/60 animate-pulse" />)}
             </div>
@@ -522,7 +523,7 @@ export default function TrendingPage() {
           </div>
 
           <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0f1629] overflow-hidden shadow-sm">
-            {loadingTechs ? (
+            {loadingTechs && allTechs.length === 0 ? (
               <div className="p-8 space-y-3">
                 {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-12 rounded-xl bg-slate-100 dark:bg-slate-800/60 animate-pulse" />)}
               </div>

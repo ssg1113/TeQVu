@@ -27,6 +27,7 @@ import { TechCard } from '../../../components/cards/TechCard';
 import { formatGrowth } from '../../../lib/utils';
 import { useAppStore } from '../../../lib/store/useAppStore';
 import type { Technology, Article, ResearchPaper, Skill } from '../../../lib/types';
+import { ALL_CURATED_TECHNOLOGIES } from '../../../lib/data/technologiesData';
 
 export default function TechnologyDetailPage() {
   const params = useParams();
@@ -63,6 +64,10 @@ export default function TechnologyDetailPage() {
       }
       if (skillsRes.status === 'fulfilled' && Array.isArray(skillsRes.value?.skills)) {
         setAllSkills(skillsRes.value.skills);
+      }
+      if (!currentTech) {
+        const fallback = ALL_CURATED_TECHNOLOGIES.find((t) => t.slug === slug || t.name.toLowerCase() === slug.toLowerCase());
+        if (fallback) currentTech = fallback;
       }
       if (currentTech) {
         setTech(currentTech);
@@ -179,6 +184,34 @@ export default function TechnologyDetailPage() {
             {tech.description}
           </p>
 
+          {/* Sunset & Deprecation Alert if cooling or falling */}
+          {(tech.status === 'falling' || tech.status === 'declining' || tech.growth < 0) && (
+            <div className="mt-4 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs space-y-2.5">
+              <div className="flex items-center gap-2 text-rose-400 font-bold font-mono">
+                <AlertCircle className="w-4 h-4" />
+                <span>Deprecation & Contraction Radar Alert</span>
+              </div>
+              <p className="text-slate-600 dark:text-slate-300">
+                {tech.declineReason || 'This technology is facing market contraction and active ecosystem migration toward modern alternatives.'}
+              </p>
+              {tech.replacedBy && tech.replacedBy.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap pt-1">
+                  <span className="text-slate-400 font-mono text-[11px]">Recommended Modern Replacements:</span>
+                  {tech.replacedBy.map((item, i) => (
+                    <span key={i} className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono text-[11px]">
+                      → {item}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {tech.migrationGuidance && (
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono pt-1 border-t border-rose-500/20">
+                  Migration Strategy: {tech.migrationGuidance}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Stats Metrics Bar */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 pt-6 mt-6 border-t border-slate-100 dark:border-slate-800 text-xs">
             <div>
@@ -201,7 +234,7 @@ export default function TechnologyDetailPage() {
             </div>
             <div>
               <div className="text-[10px] font-mono uppercase text-slate-400">Growth Rate</div>
-              <div className="font-extrabold text-lg text-emerald-400 font-mono mt-0.5">
+              <div className={`font-extrabold text-lg font-mono mt-0.5 ${tech.growth >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                 {formatGrowth(tech.growth)}
               </div>
             </div>
@@ -246,14 +279,14 @@ export default function TechnologyDetailPage() {
         {/* TAB 1: OVERVIEW & WHY IT'S TRENDING */}
         {activeTab === 'overview' && (
           <div className="space-y-8">
-            {/* Why It's Trending AI Box */}
-            <div className="p-6 rounded-2xl bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-transparent border border-cyan-500/30">
-              <div className="flex items-center gap-2 text-cyan-400 font-mono font-bold text-xs uppercase tracking-wider mb-2">
+            {/* Why It's Trending / Cooling Down AI Box */}
+            <div className={`p-6 rounded-2xl border ${tech.growth < 0 ? 'bg-gradient-to-r from-rose-500/10 via-amber-500/10 to-transparent border-rose-500/30' : 'bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-transparent border-cyan-500/30'}`}>
+              <div className={`flex items-center gap-2 font-mono font-bold text-xs uppercase tracking-wider mb-2 ${tech.growth < 0 ? 'text-rose-400' : 'text-cyan-400'}`}>
                 <Sparkles className="w-4 h-4" />
-                <span>AI Velocity Analysis: Why It&apos;s Trending</span>
+                <span>{tech.growth < 0 ? "AI Deprecation Analysis: Why It's Cooling Down" : "AI Velocity Analysis: Why It's Trending"}</span>
               </div>
               <p className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed">
-                {tech.whyTrending ||
+                {tech.declineReason || tech.whyTrending ||
                   `${tech.name} has experienced increased attention due to growing adoption across developer communities, cloud infrastructure, and security-focused software development.`}
               </p>
             </div>

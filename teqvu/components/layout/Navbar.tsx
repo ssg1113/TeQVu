@@ -93,28 +93,59 @@ export function Navbar() {
             <Logo linkToHome variant="horizontal" size="md" priority />
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-1">
-              {navLinks.map((link) => {
-                const isActive = pathname === link.href;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                      isActive
-                        ? 'text-cyan-500 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/40 font-semibold'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50'
-                    }`}
-                  >
-                    {link.label}
-                  </Link>
-                );
-              })}
-            </nav>
+            {currentUser.role === 'admin' ? (
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-purple-500/15 text-purple-400 border border-purple-500/30 shadow-sm">
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>ADMIN CONSOLE</span>
+                </span>
+                <span className="hidden sm:inline-block text-xs font-semibold text-slate-400">
+                  Real-time Management & Telemetry
+                </span>
+              </div>
+            ) : (
+              <nav className="hidden md:flex items-center gap-1">
+                {navLinks.map((link) => {
+                  const isActive = pathname === link.href;
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                        isActive
+                          ? 'text-cyan-500 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/40 font-semibold'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50'
+                      }`}
+                    >
+                      {link.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+            )}
           </div>
 
           {/* Right Controls */}
           <div className="flex items-center gap-2.5">
+            {/* Admin-only Switch back to User Mode button */}
+            {currentUser.role === 'admin' && (
+              <button
+                type="button"
+                onClick={() => {
+                  const success = switchRole('user');
+                  if (success) {
+                    router.push('/home');
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 hover:text-white border border-purple-500/30 text-xs font-bold transition shadow-sm cursor-pointer"
+                title="Switch back to User Mode"
+              >
+                <User className="w-3.5 h-3.5 text-purple-400" />
+                <span className="hidden sm:inline">Switch to User Mode</span>
+                <span className="sm:hidden">User Mode</span>
+              </button>
+            )}
+
             {/* Global Search Button */}
             <button
               onClick={() => setSearchOpen(true)}
@@ -485,35 +516,78 @@ export function Navbar() {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0a0f1e] px-4 py-3 space-y-1">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60"
-            >
-              {link.label}
-            </Link>
-          ))}
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-400">
+        <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0a0f1e] px-4 py-3 space-y-2">
+          {currentUser.role === 'admin' ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between p-2 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                <span className="flex items-center gap-2 text-xs font-bold text-purple-400">
+                  <Shield className="w-4 h-4" />
+                  <span>Admin Mode Active</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    switchRole('user');
+                    router.push('/home');
+                  }}
+                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-600 text-white cursor-pointer"
+                >
+                  Switch to User Mode
+                </button>
+              </div>
+              <Link
+                href="/admin"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 rounded-lg text-sm font-semibold text-purple-400 bg-purple-500/10 border border-purple-500/20"
+              >
+                Admin Dashboard & Live Telemetry
+              </Link>
+            </div>
+          ) : (
+            navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60"
+              >
+                {link.label}
+              </Link>
+            ))
+          )}
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-2 text-xs text-slate-400">
             {isAuthenticated ? (
               <>
-                <Link href="/bookmarks" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-1.5">
-                  <Bookmark className="w-4 h-4 text-cyan-400" />
-                  <span>Bookmarks ({bookmarkedIds.length})</span>
-                </Link>
-                {currentUser.role === 'admin' ? (
-                  <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-1.5 text-purple-400">
-                    <Shield className="w-4 h-4" />
-                    <span>Admin Console</span>
+                <div className="flex items-center justify-between">
+                  <Link href="/bookmarks" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-1.5">
+                    <Bookmark className="w-4 h-4 text-cyan-400" />
+                    <span>Bookmarks ({bookmarkedIds.length})</span>
                   </Link>
-                ) : (
-                  <Link href="/profile" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-1.5 text-slate-300">
-                    <User className="w-4 h-4 text-cyan-400" />
-                    <span>Profile</span>
-                  </Link>
-                )}
+                  {currentUser.role === 'admin' ? (
+                    <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-1.5 text-purple-400">
+                      <Shield className="w-4 h-4" />
+                      <span>Admin Console</span>
+                    </Link>
+                  ) : (
+                    <Link href="/profile" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-1.5 text-slate-300">
+                      <User className="w-4 h-4 text-cyan-400" />
+                      <span>Profile</span>
+                    </Link>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setMobileMenuOpen(false);
+                    await logout();
+                    router.push('/signin?notice=signed_out');
+                  }}
+                  className="w-full pt-2 border-t border-slate-100 dark:border-slate-800/80 text-left flex items-center gap-2 text-red-400 hover:text-red-300 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign Out</span>
+                </button>
               </>
             ) : (
               <div className="flex items-center justify-between w-full">

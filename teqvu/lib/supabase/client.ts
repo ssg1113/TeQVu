@@ -135,12 +135,21 @@ export async function updateUserPassword(
 }
 
 /**
- * Sign out user
+ * Sign out user safely with local scope and timeout guard
  */
 export async function signOut() {
   if (!supabase) {
     return { error: null };
   }
-  return await supabase.auth.signOut();
+  try {
+    return await Promise.race([
+      supabase.auth.signOut({ scope: 'local' }),
+      new Promise<{ error: null }>((resolve) =>
+        setTimeout(() => resolve({ error: null }), 1500)
+      ),
+    ]);
+  } catch (err: any) {
+    return { error: err };
+  }
 }
 

@@ -25,6 +25,11 @@ export function Sidebar() {
   const pathname = usePathname();
   const { bookmarkedIds, watchlistIds, currentUser, isAuthenticated } = useAppStore();
 
+  // Remove leftside navbar completely in admin UI or when user is in admin role
+  if (currentUser?.role === 'admin' || pathname === '/admin' || pathname?.startsWith('/admin/')) {
+    return null;
+  }
+
   const navigation = [
     { name: 'Home', href: '/home', icon: LayoutDashboard },
     { name: 'For You', href: '/for-you', icon: Sparkles, badge: 'AI' },
@@ -98,28 +103,7 @@ export function Sidebar() {
           </nav>
         </div>
 
-        {/* Admin Dashboard Link */}
-        {isAuthenticated && currentUser.role === 'admin' && (
-          <div>
-            <div className="px-3 mb-2 text-[10px] font-mono uppercase tracking-wider text-purple-400 flex items-center gap-1">
-              <Shield className="w-3 h-3" />
-              <span>Admin Console</span>
-            </div>
-            <nav className="space-y-1">
-              <Link
-                href="/admin"
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition ${
-                  pathname.startsWith('/admin')
-                    ? 'bg-purple-500/15 text-purple-400 font-semibold border border-purple-500/30'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-purple-400 hover:bg-purple-500/5'
-                }`}
-              >
-                <Shield className="w-4 h-4 text-purple-400" />
-                <span>Admin Dashboard</span>
-              </Link>
-            </nav>
-          </div>
-        )}
+
       </div>
 
       {/* Bottom Nav: Settings, Profile / Sign In */}

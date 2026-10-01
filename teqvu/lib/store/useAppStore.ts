@@ -18,6 +18,7 @@ export const ANONYMOUS_USER: UserProfile = {
   email: '',
   avatarUrl: '',
   occupation: '',
+  country: 'United States',
   interests: [],
   followedTechs: [],
   role: 'user',
@@ -59,7 +60,7 @@ interface AppState {
   setPasswordStatus: (hasPassword: boolean, updatedAt?: string) => void;
   linkAuthProvider: (provider: 'google' | 'github' | 'email') => void;
   switchRole: (role: 'user' | 'admin') => boolean;
-  logout: () => Promise<void>;
+  logout: (options?: { skipSupabase?: boolean }) => Promise<void>;
   deleteAccount: () => Promise<boolean>;
 
   // User directory for duplicate sign-up prevention
@@ -116,6 +117,9 @@ interface AppState {
   setSearchQuery: (query: string) => void;
 }
 
+// Concurrency guard to prevent re-entrant or duplicate logout loops
+let isLoggingOut = false;
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -129,6 +133,11 @@ export const useAppStore = create<AppState>()(
       setAuthenticated: (val) => set({ isAuthenticated: val }),
       updateUser: (updates) => {
         if (!get().isAuthenticated) return;
+        // Admins cannot change their profile details in Admin mode; profile details must be the same as user profile details
+        if (get().currentUser.role === 'admin') {
+          console.warn('Admins cannot change profile details in Admin mode. Profile details must match user profile.');
+          return;
+        }
         set((state) => ({ currentUser: { ...state.currentUser, ...updates } }));
       },
 
@@ -199,12 +208,13 @@ export const useAppStore = create<AppState>()(
         }
 
         const now = new Date().toISOString();
+        const prevUser = get().currentUser;
         const displayName =
           name ||
-          (isAdmin && effectiveRole === 'admin'
-            ? isPrimaryAdmin(email)
-              ? 'Platform Owner & Admin'
-              : 'Admin Operator'
+          (prevUser.name &&
+          prevUser.name !== 'Platform Owner & Admin' &&
+          prevUser.name !== 'Admin Operator'
+            ? prevUser.name
             : email.split('@')[0]);
 
         const cleanEmail = email.trim().toLowerCase();
@@ -224,10 +234,10 @@ export const useAppStore = create<AppState>()(
             role: effectiveRole,
             avatarUrl: state.currentUser.avatarUrl || '',
             occupation:
-              state.currentUser.occupation ||
-              (isAdmin && effectiveRole === 'admin'
-                ? 'Platform Administrator'
-                : 'Software Engineer'),
+              state.currentUser.occupation && state.currentUser.occupation !== 'Platform Administrator'
+                ? state.currentUser.occupation
+                : 'Software Engineer',
+            country: state.currentUser.country || 'United States',
             interests:
               state.interests.length > 0
                 ? state.interests
@@ -273,6 +283,7 @@ export const useAppStore = create<AppState>()(
             name: data.name,
             email: data.email,
             occupation: (data.occupation as Occupation) || 'Software Engineer',
+            country: (data as any).country || 'United States',
             role: effectiveRole,
             joinedAt: now.split('T')[0],
             hasPassword: true,
@@ -337,18 +348,17 @@ export const useAppStore = create<AppState>()(
         }
 
         // Switching roles MUST NOT log out the user! Seamless in-place role switch
-        const isTargetAdmin = newRole === 'admin';
-        const newName = isTargetAdmin
-          ? (isPrimaryAdmin(currentEmail) ? 'Platform Owner & Admin' : 'Admin Operator')
-          : (state.currentUser.name === 'Platform Owner & Admin' || state.currentUser.name === 'Admin Operator'
-              ? currentEmail.split('@')[0]
-              : state.currentUser.name);
+        // Profile details (name, occupation, avatar) must remain identical to user profile details
+        const authenticName =
+          state.currentUser.name === 'Platform Owner & Admin' || state.currentUser.name === 'Admin Operator'
+            ? currentEmail.split('@')[0]
+            : state.currentUser.name;
 
         set((s) => ({
           currentUser: {
             ...s.currentUser,
             role: newRole,
-            name: newName,
+            name: authenticName,
           },
           adminRolePreference: newRole,
           lastActiveAt: Date.now(),
@@ -364,59 +374,73 @@ export const useAppStore = create<AppState>()(
         return true;
       },
 
-      logout: async () => {
+      logout: async (options?: { skipSupabase?: boolean }) => {
+        if (isLoggingOut) return;
+        isLoggingOut = true;
+
         try {
-          if (supabase) {
-            await supabase.auth.signOut();
-          }
-        } catch (err) {
-          console.warn('Supabase signOut error:', err);
-        }
+          // 1. Immediately reset state synchronously in the Zustand store
+          // Doing this FIRST ensures:
+          // - Instant UI transition without waiting for network or browser locks
+          // - All auth listeners see isAuthenticated === false immediately, preventing cascade loops
+          set({
+            isAuthenticated: false,
+            currentUser: ANONYMOUS_USER,
+            bookmarkedIds: [],
+            watchlistIds: [],
+            interests: [],
+            notifications: [],
+            notifiedKeys: [],
+            activeToast: null,
+            toastQueue: [],
+            newsletterPrefs: {
+              frequency: 'daily',
+              categories: ['AI/ML', 'Languages', 'Cloud', 'Cybersecurity', 'DevOps'],
+              enableAlerts: false,
+              alertCategories: [],
+              maxAlertsPerDay: 1,
+              quietHoursStart: '22:00',
+              quietHoursEnd: '07:00',
+              deliveryTime: '08:00',
+              deliveryDayOfWeek: 1,
+              deliveryDayOfMonth: 1,
+              scheduledEmail: '',
+              scheduleEnabled: false,
+              timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
+            },
+            lastActiveAt: 0,
+            sessionTimedOut: false,
+          });
 
-        // Clear any auth tokens from browser storage
-        if (typeof window !== 'undefined') {
-          try {
-            sessionStorage.clear();
-            const keysToRemove: string[] = [];
-            for (let i = 0; i < localStorage.length; i++) {
-              const key = localStorage.key(i);
-              if (key && (key.startsWith('sb-') || key.includes('supabase.auth'))) {
-                keysToRemove.push(key);
+          // 2. Clear any auth tokens from browser storage
+          if (typeof window !== 'undefined') {
+            try {
+              sessionStorage.clear();
+              const keysToRemove: string[] = [];
+              for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (key.startsWith('sb-') || key.includes('supabase.auth'))) {
+                  keysToRemove.push(key);
+                }
               }
-            }
-            keysToRemove.forEach((k) => localStorage.removeItem(k));
-          } catch {}
-        }
+              keysToRemove.forEach((k) => localStorage.removeItem(k));
+            } catch {}
+          }
 
-        // Completely reset all private session details
-        set({
-          isAuthenticated: false,
-          currentUser: ANONYMOUS_USER,
-          bookmarkedIds: [],
-          watchlistIds: [],
-          interests: [],
-          notifications: [],
-          notifiedKeys: [],
-          activeToast: null,
-          toastQueue: [],
-          newsletterPrefs: {
-            frequency: 'daily',
-            categories: ['AI/ML', 'Languages', 'Cloud', 'Cybersecurity', 'DevOps'],
-            enableAlerts: false,
-            alertCategories: [],
-            maxAlertsPerDay: 1,
-            quietHoursStart: '22:00',
-            quietHoursEnd: '07:00',
-            deliveryTime: '08:00',
-            deliveryDayOfWeek: 1,
-            deliveryDayOfMonth: 1,
-            scheduledEmail: '',
-            scheduleEnabled: false,
-            timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
-          },
-          lastActiveAt: 0,
-          sessionTimedOut: false,
-        });
+          // 3. Inform Supabase client to clear local session safely without blocking or deadlocking
+          if (!options?.skipSupabase && supabase) {
+            try {
+              await Promise.race([
+                supabase.auth.signOut({ scope: 'local' }),
+                new Promise<void>((resolve) => setTimeout(resolve, 1500)),
+              ]);
+            } catch (err) {
+              console.warn('Supabase signOut note:', err);
+            }
+          }
+        } finally {
+          isLoggingOut = false;
+        }
       },
 
       deleteAccount: async () => {
@@ -433,61 +457,19 @@ export const useAppStore = create<AppState>()(
           console.warn('Backend delete-account request error:', err);
         }
 
-        try {
-          if (supabase) {
-            await supabase.auth.signOut();
-          }
-        } catch (err) {
-          console.warn('Supabase signOut error during deleteAccount:', err);
-        }
-
-        if (typeof window !== 'undefined') {
-          try {
-            sessionStorage.clear();
-            const keysToRemove: string[] = [];
-            for (let i = 0; i < localStorage.length; i++) {
-              const key = localStorage.key(i);
-              if (key && (key.startsWith('sb-') || key.includes('supabase.auth') || key === 'teqvu-storage')) {
-                keysToRemove.push(key);
-              }
-            }
-            keysToRemove.forEach((k) => localStorage.removeItem(k));
-          } catch {}
-        }
-
         const remainingRegistered = (get().registeredEmails || []).filter(
           (e) => e.trim().toLowerCase() !== currentEmail.trim().toLowerCase()
         );
+        set({ registeredEmails: remainingRegistered });
 
-        set({
-          isAuthenticated: false,
-          currentUser: ANONYMOUS_USER,
-          registeredEmails: remainingRegistered,
-          bookmarkedIds: [],
-          watchlistIds: [],
-          interests: [],
-          notifications: [],
-          notifiedKeys: [],
-          activeToast: null,
-          toastQueue: [],
-          newsletterPrefs: {
-            frequency: 'daily',
-            categories: ['AI/ML', 'Languages', 'Cloud', 'Cybersecurity', 'DevOps'],
-            enableAlerts: false,
-            alertCategories: [],
-            maxAlertsPerDay: 1,
-            quietHoursStart: '22:00',
-            quietHoursEnd: '07:00',
-            deliveryTime: '08:00',
-            deliveryDayOfWeek: 1,
-            deliveryDayOfMonth: 1,
-            scheduledEmail: '',
-            scheduleEnabled: false,
-            timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
-          },
-          lastActiveAt: 0,
-          sessionTimedOut: false,
-        });
+        // Safely perform logout to clear session & storage
+        await get().logout();
+
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.removeItem('teqvu-storage');
+          } catch {}
+        }
 
         return true;
       },

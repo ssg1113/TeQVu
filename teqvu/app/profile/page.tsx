@@ -29,6 +29,7 @@ import {
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { useAppStore } from '../../lib/store/useAppStore';
 import { DeleteAccountModal } from '../../components/ui/DeleteAccountModal';
+import { CountrySelect } from '../../components/ui/CountrySelect';
 import { INTEREST_OPTIONS } from '../../lib/utils';
 import type { Technology, DeliveryLog } from '../../lib/types';
 
@@ -71,6 +72,7 @@ export default function ProfilePage() {
   const [mounted, setMounted] = useState(false);
   const [name, setName] = useState(currentUser.name || '');
   const [occupation, setOccupation] = useState(currentUser.occupation || 'Software Engineer');
+  const [country, setCountry] = useState(currentUser.country || 'United States');
   const [saved, setSaved] = useState(false);
   const [techList, setTechList] = useState<Technology[]>([]);
 
@@ -81,7 +83,8 @@ export default function ProfilePage() {
   useEffect(() => {
     if (currentUser.name) setName(currentUser.name);
     if (currentUser.occupation) setOccupation(currentUser.occupation);
-  }, [currentUser.name, currentUser.occupation]);
+    if (currentUser.country) setCountry(currentUser.country);
+  }, [currentUser.name, currentUser.occupation, currentUser.country]);
 
   // Delivery schedule state
   const [targetEmail, setTargetEmail] = useState(
@@ -208,7 +211,11 @@ export default function ProfilePage() {
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    updateUser({ name, occupation });
+    if (currentUser.role === 'admin') {
+      alert('Admin profile details cannot be modified. They must be the same as your user profile details.');
+      return;
+    }
+    updateUser({ name, occupation, country });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
@@ -472,16 +479,26 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          {currentUser.role === 'admin' && (
+            <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/25 text-purple-300 text-xs flex items-center gap-2.5">
+              <Shield className="w-4 h-4 text-purple-400 flex-shrink-0" />
+              <span>
+                <strong>Profile Details Locked:</strong> Admins cannot change profile details directly. Profile details must remain identical to your user profile details. To edit your name or occupation, switch to User mode.
+              </span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 Display Name
               </label>
               <input
                 type="text"
+                disabled={currentUser.role === 'admin'}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -490,9 +507,10 @@ export default function ProfilePage() {
                 Occupation / Role
               </label>
               <select
+                disabled={currentUser.role === 'admin'}
                 value={occupation}
                 onChange={(e) => setOccupation(e.target.value as any)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {occupations.map((occ) => (
                   <option key={occ} value={occ}>
@@ -500,6 +518,18 @@ export default function ProfilePage() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                Country (Target Job Market)
+              </label>
+              <CountrySelect
+                value={country}
+                onChange={(selectedName) => setCountry(selectedName)}
+                disabled={currentUser.role === 'admin'}
+                placeholder="Select your country..."
+              />
             </div>
           </div>
 
@@ -510,13 +540,15 @@ export default function ProfilePage() {
               </span>
             ) : <div />}
 
-            <button
-              type="submit"
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-500 transition shadow-md shadow-cyan-500/20"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>Save Profile</span>
-            </button>
+            {currentUser.role !== 'admin' && (
+              <button
+                type="submit"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-500 transition shadow-md shadow-cyan-500/20"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>Save Profile</span>
+              </button>
+            )}
           </div>
         </form>
 

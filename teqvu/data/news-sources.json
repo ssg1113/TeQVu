@@ -1,0 +1,74 @@
+[
+  {
+    "id": "reuters",
+    "name": "Reuters Technology",
+    "url": "https://news.google.com/rss/search?q=when:3d+source:Reuters+technology&hl=en-US&gl=US&ceid=US:en",
+    "type": "Global Wire",
+    "category": "Tech News",
+    "trustScore": 10,
+    "status": "active",
+    "articlesCount": 0,
+    "lastChecked": "2026-10-01T16:36:25.939Z",
+    "collectionFrequency": "15 minutes"
+  },
+  {
+    "id": "bbc",
+    "name": "BBC Technology",
+    "url": "https://feeds.bbci.co.uk/news/technology/rss.xml",
+    "type": "Public Broadcaster",
+    "category": "Tech News",
+    "trustScore": 10,
+    "status": "active",
+    "articlesCount": 0,
+    "lastChecked": "2026-10-01T16:36:25.939Z",
+    "collectionFrequency": "15 minutes"
+  },
+  {
+    "id": "googlenews",
+    "name": "Google News Tech",
+    "url": "https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGRqTVhZU0FtVnVHZ0pWVXlnQVAB?hl=en-US&gl=US&ceid=US:en",
+    "type": "Global Wire",
+    "category": "Tech News",
+    "trustScore": 9,
+    "status": "active",
+    "articlesCount": 0,
+    "lastChecked": "2026-10-01T16:36:25.939Z",
+    "collectionFrequency": "15 minutes"
+  },
+  {
+    "id": "digitaltrends",
+    "name": "Digital Trends",
+    "url": "https://news.google.com/rss/search?q=when:7d+source:Digital+Trends&hl=en-US&gl=US&ceid=US:en",
+    "type": "Tech News",
+    "category": "Tech News",
+    "trustScore": 9,
+    "status": "active",
+    "articlesCount": 0,
+    "lastChecked": "2026-10-01T16:36:25.939Z",
+    "collectionFrequency": "30 minutes"
+  },
+  {
+    "id": "theverge",
+    "name": "The Verge",
+    "url": "https://www.theverge.com/rss/index.xml",
+    "type": "Tech News",
+    "category": "Emerging Tech",
+    "trustScore": 9,
+    "status": "active",
+    "articlesCount": 0,
+    "lastChecked": "2026-10-01T16:36:25.939Z",
+    "collectionFrequency": "30 minutes"
+  },
+  {
+    "id": "hackernews",
+    "name": "Hacker News RSS",
+    "url": "https://news.ycombinator.com/rss",
+    "type": "Developer Community",
+    "category": "Software Engineering",
+    "trustScore": 10,
+    "status": "active",
+    "articlesCount": 0,
+    "lastChecked": "2026-10-01T16:36:25.939Z",
+    "collectionFrequency": "15 minutes"
+  }
+]
