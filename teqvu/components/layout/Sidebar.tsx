@@ -17,12 +17,13 @@ import {
   User,
   Shield,
   Compass,
+  LogIn,
 } from 'lucide-react';
 import { useAppStore } from '../../lib/store/useAppStore';
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { bookmarkedIds, watchlistIds, currentUser } = useAppStore();
+  const { bookmarkedIds, watchlistIds, currentUser, isAuthenticated } = useAppStore();
 
   const navigation = [
     { name: 'Home', href: '/home', icon: LayoutDashboard },
@@ -36,14 +37,14 @@ export function Sidebar() {
       name: 'Bookmarks',
       href: '/bookmarks',
       icon: Bookmark,
-      count: bookmarkedIds.length,
+      count: isAuthenticated ? bookmarkedIds.length : undefined,
     },
     { name: 'Newsletter', href: '/newsletter', icon: Mail },
     {
       name: 'Watchlist',
       href: '/watchlist',
       icon: Eye,
-      count: watchlistIds.length,
+      count: isAuthenticated ? watchlistIds.length : undefined,
     },
   ];
 
@@ -98,7 +99,7 @@ export function Sidebar() {
         </div>
 
         {/* Admin Dashboard Link */}
-        {currentUser.role === 'admin' && (
+        {isAuthenticated && currentUser.role === 'admin' && (
           <div>
             <div className="px-3 mb-2 text-[10px] font-mono uppercase tracking-wider text-purple-400 flex items-center gap-1">
               <Shield className="w-3 h-3" />
@@ -121,7 +122,7 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Bottom Nav: Settings, Profile */}
+      {/* Bottom Nav: Settings, Profile / Sign In */}
       <div className="pt-4 border-t border-slate-200/80 dark:border-slate-800/80 space-y-1">
         <Link
           href="/settings"
@@ -135,17 +136,27 @@ export function Sidebar() {
           <span>Settings</span>
         </Link>
 
-        <Link
-          href="/profile"
-          className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition ${
-            pathname === '/profile'
-              ? 'bg-cyan-500/10 text-cyan-400 font-semibold'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/40'
-          }`}
-        >
-          <User className="w-4 h-4" />
-          <span>Profile ({currentUser.occupation})</span>
-        </Link>
+        {isAuthenticated ? (
+          <Link
+            href="/profile"
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition ${
+              pathname === '/profile'
+                ? 'bg-cyan-500/10 text-cyan-400 font-semibold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/40'
+            }`}
+          >
+            <User className="w-4 h-4" />
+            <span>Profile ({currentUser.occupation || 'Developer'})</span>
+          </Link>
+        ) : (
+          <Link
+            href="/signin"
+            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/10 transition"
+          >
+            <LogIn className="w-4 h-4" />
+            <span>Sign In to Account</span>
+          </Link>
+        )}
       </div>
     </aside>
   );

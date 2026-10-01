@@ -10,21 +10,27 @@ import { useAppStore } from '../../lib/store/useAppStore';
 import type { Article, ResearchPaper } from '../../lib/types';
 
 export default function BookmarksPage() {
-  const { bookmarkedIds } = useAppStore();
+  const { bookmarkedIds, isAuthenticated } = useAppStore();
+  const [mounted, setMounted] = useState(false);
   const [articlesList, setArticlesList] = useState<Article[]>([]);
   const [researchList, setResearchList] = useState<ResearchPaper[]>([]);
   const [selectedFolder, setSelectedFolder] = useState<string>('all');
   const [collections, setCollections] = useState([
     { id: 'all', name: 'All Saved Items', count: bookmarkedIds.length },
-    { id: 'ai-agents', name: 'AI & Autonomous Agents', count: 2 },
-    { id: 'systems', name: 'Systems & Kernels', count: 1 },
-    { id: 'thesis', name: 'Research for Thesis', count: 1 },
+    { id: 'ai-agents', name: 'AI & Autonomous Agents', count: 0 },
+    { id: 'systems', name: 'Systems & Kernels', count: 0 },
+    { id: 'thesis', name: 'Research for Thesis', count: 0 },
   ]);
 
   const [newFolderName, setNewFolderName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
     Promise.allSettled([
       fetch('/api/tech-news?limit=50').then((r) => r.json()),
       fetch('/api/research?limit=30').then((r) => r.json()),
@@ -36,7 +42,7 @@ export default function BookmarksPage() {
         setResearchList(resRes.value.papers);
       }
     });
-  }, []);
+  }, [isAuthenticated]);
 
   const savedArticles = articlesList.filter((a) => bookmarkedIds.includes(a.id));
   const savedResearch = researchList.filter((r) => bookmarkedIds.includes(r.id));
@@ -53,6 +59,46 @@ export default function BookmarksPage() {
     setNewFolderName('');
     setIsCreating(false);
   };
+
+  if (mounted && !isAuthenticated) {
+    return (
+      <DashboardLayout>
+        <div className="py-20 flex flex-col items-center justify-center text-center max-w-lg mx-auto space-y-6 animate-fade-in">
+          <div className="w-16 h-16 rounded-3xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-xl shadow-cyan-500/10">
+            <Bookmark className="w-8 h-8" />
+          </div>
+
+          <div>
+            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              Personal Intelligence Dossiers
+            </span>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white mt-3">
+              Sign In to View Saved Bookmarks
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+              Curate and access your personal library of saved articles, academic papers, and architectural insights across all devices.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+            <Link
+              href="/signin?notice=auth_required&returnUrl=/bookmarks"
+              className="w-full sm:flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 shadow-lg shadow-cyan-500/20 transition"
+            >
+              <span>Sign In to Bookmarks</span>
+            </Link>
+
+            <Link
+              href="/trending"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-white"
+            >
+              Explore Trending
+            </Link>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

@@ -7,17 +7,18 @@ import { ArrowRight, Github, Mail, Lock, User, Briefcase, AlertCircle, Loader2, 
 import { Logo } from '../../components/ui/Logo';
 import { signInWithGoogle, signInWithGitHub, signUpWithEmail, isSupabaseConfigured } from '../../lib/supabase/client';
 import { useAppStore } from '../../lib/store/useAppStore';
+import type { Occupation } from '../../lib/types';
 import { PasswordStrengthIndicator } from '../../components/ui/PasswordStrengthIndicator';
 
 export default function SignUpPage() {
   const router = useRouter();
-  const { signup, login } = useAppStore();
+  const { signup, login, isEmailRegistered } = useAppStore();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isPasswordValid, setIsPasswordValid] = useState(false);
-  const [occupation, setOccupation] = useState('Software Engineer');
+  const [occupation, setOccupation] = useState<Occupation>('Software Engineer');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [githubLoading, setGithubLoading] = useState(false);
@@ -29,8 +30,15 @@ export default function SignUpPage() {
     e.preventDefault();
     setErrorMsg(null);
 
+    // 1. Verify password security criteria
     if (!isPasswordValid) {
       setErrorMsg('Please choose a password that satisfies all security requirements.');
+      return;
+    }
+
+    // 2. Prevent duplicate account creation if email is already registered
+    if (isEmailRegistered(email)) {
+      setErrorMsg('An account with this email address already exists. Please sign in instead.');
       return;
     }
 
@@ -52,7 +60,21 @@ export default function SignUpPage() {
       });
 
       if (error) {
-        setErrorMsg(error.message);
+        if (
+          error.message.toLowerCase().includes('already registered') ||
+          error.message.toLowerCase().includes('already exists')
+        ) {
+          setErrorMsg('An account with this email address already exists. Please sign in instead.');
+        } else {
+          setErrorMsg(error.message);
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Supabase returns empty identities array when user already exists with email
+      if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        setErrorMsg('An account with this email address already exists. Please sign in instead.');
         setLoading(false);
         return;
       }
@@ -76,6 +98,10 @@ export default function SignUpPage() {
     setGoogleLoading(true);
 
     try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('auth_flow_intent', 'signup');
+      }
+
       if (!isSupabaseConfigured) {
         setErrorMsg('Supabase is not configured. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in .env.local.');
         setGoogleLoading(false);
@@ -99,6 +125,10 @@ export default function SignUpPage() {
     setGithubLoading(true);
 
     try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('auth_flow_intent', 'signup');
+      }
+
       if (!isSupabaseConfigured) {
         setErrorMsg('Supabase is not configured. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in .env.local.');
         setGithubLoading(false);
@@ -264,7 +294,7 @@ export default function SignUpPage() {
               <Briefcase className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <select
                 value={occupation}
-                onChange={(e) => setOccupation(e.target.value)}
+                onChange={(e) => setOccupation(e.target.value as Occupation)}
                 className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-cyan-500 cursor-pointer"
               >
                 {occupations.map((occ) => (

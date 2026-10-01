@@ -14,6 +14,7 @@ import {
   EyeOff,
   AlertTriangle,
   Sparkles,
+  Shield,
 } from 'lucide-react';
 import { Logo } from '../../components/ui/Logo';
 import {
@@ -31,11 +32,12 @@ import {
 function SignInContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, adminEmails } = useAppStore();
+  const { login, adminEmails, adminRolePreference } = useAppStore();
 
   const switchedParam = searchParams.get('switched') === 'true';
   const roleParam = searchParams.get('role');
   const noticeParam = searchParams.get('notice');
+  const returnUrl = searchParams.get('returnUrl') || '';
   const initialEmail = searchParams.get('email') || '';
 
   const [email, setEmail] = useState(initialEmail);
@@ -45,6 +47,17 @@ function SignInContent() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [githubLoading, setGithubLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Selected role if this is an admin account
+  const defaultRole: 'admin' | 'user' =
+    roleParam === 'user'
+      ? 'user'
+      : roleParam === 'admin'
+      ? 'admin'
+      : adminRolePreference || 'admin';
+  const [selectedRole, setSelectedRole] = useState<'admin' | 'user'>(defaultRole);
+
+  const isCurrentEmailAdmin = isAdminAccount(email, adminEmails);
 
   useEffect(() => {
     if (initialEmail && !email) {
@@ -81,10 +94,17 @@ function SignInContent() {
         user?.user_metadata?.full_name ||
         user?.user_metadata?.name ||
         email.split('@')[0];
-      const targetRole = isAdmin ? (roleParam === 'user' ? 'user' : 'admin') : 'user';
+
+      // If user is an admin account, respect their chosen role mode
+      const targetRole: 'user' | 'admin' = isAdmin ? selectedRole : 'user';
 
       login(email, targetRole, name);
-      router.push(targetRole === 'admin' ? '/admin' : '/home');
+
+      if (returnUrl && !returnUrl.startsWith('//')) {
+        router.push(returnUrl);
+      } else {
+        router.push(targetRole === 'admin' ? '/admin' : '/home');
+      }
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to sign in');
     } finally {
@@ -102,6 +122,11 @@ function SignInContent() {
         setErrorMsg('Supabase is not configured.');
         setGoogleLoading(false);
         return;
+      }
+
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('preferred_oauth_role', selectedRole);
+        sessionStorage.setItem('auth_flow_intent', 'signin');
       }
 
       const { error } = await signInWithGoogle();
@@ -125,6 +150,11 @@ function SignInContent() {
         setErrorMsg('Supabase is not configured.');
         setGithubLoading(false);
         return;
+      }
+
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('preferred_oauth_role', selectedRole);
+        sessionStorage.setItem('auth_flow_intent', 'signin');
       }
 
       const { error } = await signInWithGitHub();
@@ -152,18 +182,40 @@ function SignInContent() {
           </p>
         </div>
 
-        {/* Role Switch Redirection Banner */}
-        {switchedParam && (
-          <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/30 text-purple-400 text-xs flex items-start gap-2.5 font-medium animate-fade-in">
+        {/* Signed Out Banner */}
+        {noticeParam === 'signed_out' && (
+          <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 dark:text-emerald-400 text-xs flex items-start gap-2.5 font-medium animate-fade-in">
             <Sparkles className="w-4 h-4 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold text-slate-900 dark:text-white">Role Transition Active</p>
+              <p className="font-bold text-slate-900 dark:text-white">Signed Out Successfully</p>
               <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
-                You have switched to{' '}
-                <span className="font-bold text-purple-400 capitalize">
-                  {roleParam === 'admin' ? 'Administrator' : 'Normal User'}
-                </span>{' '}
-                mode. For security compliance, please sign in with your credentials.
+                Your session has been securely closed. All cached credentials and personalized data have been cleared.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Session Timeout Notice */}
+        {noticeParam === 'session_timeout' && (
+          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-500 dark:text-amber-400 text-xs flex items-start gap-2.5 font-medium animate-fade-in">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-slate-900 dark:text-white">Session Timed Out</p>
+              <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                Your session expired due to inactivity. Please sign in again to access your account and personalized feeds.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Authentication Required Notice */}
+        {noticeParam === 'auth_required' && (
+          <div className="p-3.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-500 dark:text-cyan-400 text-xs flex items-start gap-2.5 font-medium animate-fade-in">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-slate-900 dark:text-white">Sign In Required</p>
+              <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                Please sign in to access your profile, bookmarked intelligence dossiers, and customized settings.
               </p>
             </div>
           </div>
@@ -171,7 +223,7 @@ function SignInContent() {
 
         {/* Administrator Clearance Notice */}
         {noticeParam === 'admin_required' && (
-          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs flex items-start gap-2.5 font-medium animate-fade-in">
+          <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/30 text-purple-400 text-xs flex items-start gap-2.5 font-medium animate-fade-in">
             <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
             <div>
               <p className="font-bold text-slate-900 dark:text-white">Admin Clearance Required</p>
@@ -179,6 +231,32 @@ function SignInContent() {
                 Only authorized administrator accounts (including primary administrator{' '}
                 <span className="font-mono text-purple-400">{PRIMARY_ADMIN_EMAIL}</span>) have access to the
                 Administrator Console. Please sign in below.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Existing Account Notice for Duplicate Sign-Up Prevention */}
+        {noticeParam === 'already_registered' && (
+          <div className="p-3.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs flex items-start gap-2.5 font-medium animate-fade-in">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-cyan-400" />
+            <div>
+              <p className="font-bold text-slate-900 dark:text-white">Account Already Exists</p>
+              <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                An account is already linked to this email address. Please enter your credentials or sign in with Google below.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Account Permanently Deleted Notice */}
+        {noticeParam === 'account_deleted' && (
+          <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-start gap-2.5 font-medium animate-fade-in">
+            <Sparkles className="w-4 h-4 flex-shrink-0 mt-0.5 text-emerald-400" />
+            <div>
+              <p className="font-bold text-slate-900 dark:text-white">Account Deleted</p>
+              <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                Your account and all associated preferences have been permanently removed.
               </p>
             </div>
           </div>
@@ -294,6 +372,48 @@ function SignInContent() {
               </button>
             </div>
           </div>
+
+          {/* Admin Role Mode Selection Toggle */}
+          {isCurrentEmailAdmin && (
+            <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/25 text-xs space-y-2 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 text-[11px]">
+                  <Shield className="w-3.5 h-3.5 text-purple-400" />
+                  Admin Account Recognized
+                </span>
+                <span className="text-[10px] text-purple-400 font-mono">Sign-in role mode:</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole('admin')}
+                  className={`py-2 px-2.5 rounded-xl font-bold text-xs transition border cursor-pointer ${
+                    selectedRole === 'admin'
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-500 shadow-md shadow-purple-500/20'
+                      : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:text-white'
+                  }`}
+                >
+                  Administrator
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole('user')}
+                  className={`py-2 px-2.5 rounded-xl font-bold text-xs transition border cursor-pointer ${
+                    selectedRole === 'user'
+                      ? 'bg-gradient-to-r from-cyan-600 to-cyan-500 text-white border-cyan-500 shadow-md shadow-cyan-500/20'
+                      : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:text-white'
+                  }`}
+                >
+                  Normal User
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400 leading-tight">
+                {selectedRole === 'admin'
+                  ? 'Access the Admin Console with full scraper and ingestion telemetry.'
+                  : 'Browse the platform as a normal user to experience standard features.'}
+              </p>
+            </div>
+          )}
 
           <button
             type="submit"

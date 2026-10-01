@@ -11,10 +11,16 @@ import { useAppStore } from '../../lib/store/useAppStore';
 import type { Technology } from '../../lib/types';
 
 export default function WatchlistPage() {
-  const { watchlistIds, toggleWatchlist } = useAppStore();
+  const { watchlistIds, toggleWatchlist, isAuthenticated } = useAppStore();
+  const [mounted, setMounted] = useState(false);
   const [techList, setTechList] = useState<Technology[]>([]);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
     fetch('/api/trends')
       .then((r) => r.json())
       .then((data) => {
@@ -23,9 +29,49 @@ export default function WatchlistPage() {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [isAuthenticated]);
 
   const watchedTechs = techList.filter((t) => watchlistIds.includes(t.id) || watchlistIds.includes(t.slug));
+
+  if (mounted && !isAuthenticated) {
+    return (
+      <DashboardLayout>
+        <div className="py-20 flex flex-col items-center justify-center text-center max-w-lg mx-auto space-y-6 animate-fade-in">
+          <div className="w-16 h-16 rounded-3xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-xl shadow-cyan-500/10">
+            <Eye className="w-8 h-8" />
+          </div>
+
+          <div>
+            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              Personal Tracking Portfolio
+            </span>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white mt-3">
+              Sign In to View Watchlist
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+              Monitor velocity signals, GitHub breakout repositories, and preprint alerts for technologies you follow.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+            <Link
+              href="/signin?notice=auth_required&returnUrl=/watchlist"
+              className="w-full sm:flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 shadow-lg shadow-cyan-500/20 transition"
+            >
+              <span>Sign In to Watchlist</span>
+            </Link>
+
+            <Link
+              href="/technologies"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-white"
+            >
+              Explore Technologies
+            </Link>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

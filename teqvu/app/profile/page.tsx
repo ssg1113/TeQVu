@@ -22,9 +22,13 @@ import {
   Info,
   ExternalLink,
   Sparkles,
+  Lock,
+  ArrowRight,
+  Trash2,
 } from 'lucide-react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { useAppStore } from '../../lib/store/useAppStore';
+import { DeleteAccountModal } from '../../components/ui/DeleteAccountModal';
 import { INTEREST_OPTIONS } from '../../lib/utils';
 import type { Technology, DeliveryLog } from '../../lib/types';
 
@@ -54,6 +58,7 @@ const TIME_PRESETS = [
 export default function ProfilePage() {
   const {
     currentUser,
+    isAuthenticated,
     updateUser,
     interests,
     toggleInterest,
@@ -63,14 +68,24 @@ export default function ProfilePage() {
     updateNewsletterPrefs,
   } = useAppStore();
 
-  const [name, setName] = useState(currentUser.name);
-  const [occupation, setOccupation] = useState(currentUser.occupation);
+  const [mounted, setMounted] = useState(false);
+  const [name, setName] = useState(currentUser.name || '');
+  const [occupation, setOccupation] = useState(currentUser.occupation || 'Software Engineer');
   const [saved, setSaved] = useState(false);
   const [techList, setTechList] = useState<Technology[]>([]);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (currentUser.name) setName(currentUser.name);
+    if (currentUser.occupation) setOccupation(currentUser.occupation);
+  }, [currentUser.name, currentUser.occupation]);
+
   // Delivery schedule state
   const [targetEmail, setTargetEmail] = useState(
-    newsletterPrefs.scheduledEmail || currentUser.email || 'sgdesilva1113@gmail.com'
+    newsletterPrefs.scheduledEmail || currentUser.email || ''
   );
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'disabled'>(
     newsletterPrefs.frequency || 'daily'
@@ -84,6 +99,7 @@ export default function ProfilePage() {
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [isSendingSample, setIsSendingSample] = useState(false);
   const [isTriggeringScheduled, setIsTriggeringScheduled] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Sync state if store hydrated from localStorage with user preferences
   useEffect(() => {
@@ -381,6 +397,47 @@ export default function ProfilePage() {
 
     return `At ${timeFormatted} to ${targetEmail}`;
   };
+
+  if (mounted && !isAuthenticated) {
+    return (
+      <DashboardLayout>
+        <div className="py-16 flex flex-col items-center justify-center text-center max-w-lg mx-auto space-y-6 animate-fade-in">
+          <div className="w-16 h-16 rounded-3xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-xl shadow-cyan-500/10">
+            <Lock className="w-8 h-8" />
+          </div>
+
+          <div>
+            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              Authentication Required
+            </span>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white mt-3">
+              Account Profile Protected
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+              Please sign in to access your intelligence profile, professional role, and automated newsletter dispatch schedule.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+            <Link
+              href="/signin?notice=auth_required&returnUrl=/profile"
+              className="w-full sm:flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 shadow-lg shadow-cyan-500/20 transition"
+            >
+              <span>Sign In to Profile</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+
+            <Link
+              href="/home"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-white"
+            >
+              Back to Home
+            </Link>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -917,6 +974,45 @@ export default function ProfilePage() {
             <span className="text-xs font-mono text-purple-400">View →</span>
           </Link>
         </div>
+
+        {/* 5. Danger Zone: Permanent Account Deletion */}
+        <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-[#0f1629] border border-red-500/30 dark:border-red-500/20 shadow-xl shadow-red-500/5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 shrink-0 mt-0.5">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                    Danger Zone: Delete Account
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-red-500/15 text-red-400 border border-red-500/30">
+                    Irreversible
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xl leading-relaxed">
+                  Permanently erase your TeQVu account, personalized briefings, monitored technologies, and bookmarks. A system-generated verification word is required to confirm.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsDeleteModalOpen(true)}
+              className="px-4 py-2.5 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-bold transition flex items-center gap-2 self-start sm:self-auto shrink-0 shadow-sm"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Delete Account</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Account Deletion Modal */}
+        <DeleteAccountModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+        />
       </div>
     </DashboardLayout>
   );

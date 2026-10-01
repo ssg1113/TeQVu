@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { UserProfile, NewsletterPreference, AppNotification } from '../types';
+import type { UserProfile, NewsletterPreference, AppNotification, Occupation } from '../types';
 import {
   PRIMARY_ADMIN_EMAIL,
   ADMIN_NAME,
@@ -10,19 +10,61 @@ import {
   isPrimaryAdmin,
   canSwitchRole,
 } from '../security/admin';
+import { supabase } from '../supabase/client';
+
+export const ANONYMOUS_USER: UserProfile = {
+  id: '',
+  name: 'Guest User',
+  email: '',
+  avatarUrl: '',
+  occupation: '',
+  interests: [],
+  followedTechs: [],
+  role: 'user',
+  joinedAt: '',
+  newsletterPreference: {
+    frequency: 'daily',
+    categories: ['AI/ML', 'Languages', 'Cloud', 'Cybersecurity', 'DevOps'],
+    enableAlerts: false,
+    alertCategories: [],
+    maxAlertsPerDay: 1,
+    quietHoursStart: '22:00',
+    quietHoursEnd: '07:00',
+    deliveryTime: '08:00',
+    deliveryDayOfWeek: 1,
+    deliveryDayOfMonth: 1,
+    scheduledEmail: '',
+    scheduleEnabled: false,
+    timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
+  },
+  hasPassword: false,
+  authProviders: [],
+  passwordUpdatedAt: '',
+  twoFactorEnabled: false,
+};
 
 interface AppState {
   // Auth state
   isAuthenticated: boolean;
   currentUser: UserProfile;
+  adminRolePreference?: 'user' | 'admin';
+  setAdminRolePreference: (role: 'user' | 'admin') => void;
+  lastActiveAt: number;
+  recordActivity: () => void;
+  sessionTimedOut: boolean;
   setAuthenticated: (val: boolean) => void;
   updateUser: (updates: Partial<UserProfile>) => void;
   login: (email: string, role?: 'user' | 'admin', name?: string, provider?: 'google' | 'github' | 'email', hasPassword?: boolean) => void;
-  signup: (data: { name: string; email: string; occupation?: any; role?: 'user' | 'admin' }) => void;
+  signup: (data: { name: string; email: string; occupation?: Occupation | string; role?: 'user' | 'admin' }) => void;
   setPasswordStatus: (hasPassword: boolean, updatedAt?: string) => void;
   linkAuthProvider: (provider: 'google' | 'github' | 'email') => void;
   switchRole: (role: 'user' | 'admin') => boolean;
-  logout: () => void;
+  logout: () => Promise<void>;
+  deleteAccount: () => Promise<boolean>;
+
+  // User directory for duplicate sign-up prevention
+  registeredEmails: string[];
+  isEmailRegistered: (email: string) => boolean;
 
   // Admin Governance & Delegation
   adminEmails: string[];
@@ -74,46 +116,29 @@ interface AppState {
   setSearchQuery: (query: string) => void;
 }
 
-
-const DEFAULT_USER: UserProfile = {
-  id: 'usr_normal_01',
-  name: 'Alex Rivera',
-  email: 'alex.rivera@techpulse.dev',
-  avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
-  occupation: 'Software Engineer',
-  interests: ['ai', 'web-dev', 'software-eng', 'cloud', 'cybersecurity'],
-  followedTechs: ['rust', 'llm-agents', 'nextjs', 'pgvector', 'ebpf'],
-  role: 'user', // Default to normal user so admin isolation is immediately apparent
-  joinedAt: '2025-01-10',
-  newsletterPreference: {
-    frequency: 'daily',
-    categories: ['AI/ML', 'Languages', 'Cloud', 'Cybersecurity', 'DevOps'],
-    enableAlerts: true,
-    alertCategories: ['AI/ML', 'Languages', 'Cybersecurity'],
-    maxAlertsPerDay: 1,
-    quietHoursStart: '22:00',
-    quietHoursEnd: '07:00',
-    deliveryTime: '08:00',
-    deliveryDayOfWeek: 1,
-    deliveryDayOfMonth: 1,
-    scheduledEmail: 'sgdesilva1113@gmail.com',
-    scheduleEnabled: true,
-    timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
-  },
-  hasPassword: true,
-  authProviders: ['google', 'email'],
-  passwordUpdatedAt: '2025-01-10T12:00:00Z',
-  twoFactorEnabled: false,
-};
-
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      isAuthenticated: true,
-      currentUser: DEFAULT_USER,
+      isAuthenticated: false,
+      currentUser: ANONYMOUS_USER,
+      adminRolePreference: undefined,
+      lastActiveAt: 0,
+      sessionTimedOut: false,
+      setAdminRolePreference: (role) => set({ adminRolePreference: role }),
+      recordActivity: () => set({ lastActiveAt: Date.now() }),
       setAuthenticated: (val) => set({ isAuthenticated: val }),
-      updateUser: (updates) =>
-        set((state) => ({ currentUser: { ...state.currentUser, ...updates } })),
+      updateUser: (updates) => {
+        if (!get().isAuthenticated) return;
+        set((state) => ({ currentUser: { ...state.currentUser, ...updates } }));
+      },
+
+      // User directory
+      registeredEmails: [PRIMARY_ADMIN_EMAIL],
+      isEmailRegistered: (email: string) => {
+        const clean = (email || '').trim().toLowerCase();
+        if (!clean) return false;
+        return (get().registeredEmails || []).some((e) => e.trim().toLowerCase() === clean);
+      },
 
       adminEmails: [PRIMARY_ADMIN_EMAIL],
 
@@ -160,39 +185,118 @@ export const useAppStore = create<AppState>()(
           ? [...prevProviders, provider]
           : prevProviders;
 
-        // If the user is an admin account, respect explicit target role or default to 'admin'
+        // If the user is an admin account, respect explicit target role or stored preference, else default to 'admin'
         // If they are NOT an admin account, role is ALWAYS strictly forced to 'user'
-        const effectiveRole: 'user' | 'admin' = isAdmin ? (role || 'admin') : 'user';
+        let effectiveRole: 'user' | 'admin' = 'user';
+        if (isAdmin) {
+          if (role) {
+            effectiveRole = role;
+          } else if (get().adminRolePreference) {
+            effectiveRole = get().adminRolePreference!;
+          } else {
+            effectiveRole = 'admin';
+          }
+        }
 
-        set({
+        const now = new Date().toISOString();
+        const displayName =
+          name ||
+          (isAdmin && effectiveRole === 'admin'
+            ? isPrimaryAdmin(email)
+              ? 'Platform Owner & Admin'
+              : 'Admin Operator'
+            : email.split('@')[0]);
+
+        const cleanEmail = email.trim().toLowerCase();
+        const currentReg = get().registeredEmails || [];
+        const nextReg = currentReg.includes(cleanEmail) ? currentReg : [...currentReg, cleanEmail];
+
+        set((state) => ({
           isAuthenticated: true,
+          adminRolePreference: effectiveRole,
+          lastActiveAt: Date.now(),
+          sessionTimedOut: false,
+          registeredEmails: nextReg,
           currentUser: {
-            ...get().currentUser,
+            id: state.currentUser.id || `usr_${Date.now()}`,
             email,
-            name: name || (isAdmin ? (isPrimaryAdmin(email) ? 'Platform Owner & Admin' : 'Admin Operator') : email.split('@')[0]),
+            name: displayName,
             role: effectiveRole,
-            hasPassword: hasPassword !== undefined ? hasPassword : (get().currentUser.hasPassword ?? true),
+            avatarUrl: state.currentUser.avatarUrl || '',
+            occupation:
+              state.currentUser.occupation ||
+              (isAdmin && effectiveRole === 'admin'
+                ? 'Platform Administrator'
+                : 'Software Engineer'),
+            interests:
+              state.interests.length > 0
+                ? state.interests
+                : ['ai', 'web-dev', 'software-eng', 'cloud', 'cybersecurity'],
+            followedTechs:
+              state.watchlistIds.length > 0
+                ? state.watchlistIds
+                : ['rust', 'llm-agents', 'nextjs', 'pgvector', 'ebpf'],
+            joinedAt: state.currentUser.joinedAt || now.split('T')[0],
+            hasPassword:
+              hasPassword !== undefined
+                ? hasPassword
+                : (state.currentUser.hasPassword ?? true),
             authProviders: updatedProviders,
+            passwordUpdatedAt: state.currentUser.passwordUpdatedAt || now,
+            twoFactorEnabled: state.currentUser.twoFactorEnabled || false,
+            newsletterPreference: {
+              ...state.newsletterPrefs,
+              scheduledEmail: email,
+              scheduleEnabled: state.newsletterPrefs.scheduleEnabled ?? true,
+            },
           },
-        });
+        }));
       },
 
       signup: (data) => {
         // Normal registrations are strictly regular 'user' accounts unless matching an admin email
         const isAdmin = isAdminAccount(data.email, get().adminEmails);
+        const effectiveRole: 'user' | 'admin' = isAdmin ? 'admin' : 'user';
+        const now = new Date().toISOString();
+        const cleanEmail = data.email.trim().toLowerCase();
+        const currentReg = get().registeredEmails || [];
+        const nextReg = currentReg.includes(cleanEmail) ? currentReg : [...currentReg, cleanEmail];
+
         set({
           isAuthenticated: true,
+          adminRolePreference: effectiveRole,
+          lastActiveAt: Date.now(),
+          sessionTimedOut: false,
+          registeredEmails: nextReg,
           currentUser: {
-            ...get().currentUser,
             id: `usr_${Date.now()}`,
             name: data.name,
             email: data.email,
-            occupation: data.occupation || 'Software Engineer',
-            role: isAdmin ? 'admin' : 'user',
-            joinedAt: new Date().toISOString().split('T')[0],
+            occupation: (data.occupation as Occupation) || 'Software Engineer',
+            role: effectiveRole,
+            joinedAt: now.split('T')[0],
             hasPassword: true,
             authProviders: ['email'],
-            passwordUpdatedAt: new Date().toISOString(),
+            passwordUpdatedAt: now,
+            avatarUrl: '',
+            interests: ['ai', 'web-dev', 'software-eng', 'cloud', 'cybersecurity'],
+            followedTechs: ['rust', 'llm-agents', 'nextjs', 'pgvector', 'ebpf'],
+            twoFactorEnabled: false,
+            newsletterPreference: {
+              frequency: 'daily',
+              categories: ['AI/ML', 'Languages', 'Cloud', 'Cybersecurity', 'DevOps'],
+              enableAlerts: true,
+              alertCategories: ['AI/ML', 'Languages', 'Cybersecurity'],
+              maxAlertsPerDay: 1,
+              quietHoursStart: '22:00',
+              quietHoursEnd: '07:00',
+              deliveryTime: '08:00',
+              deliveryDayOfWeek: 1,
+              deliveryDayOfMonth: 1,
+              scheduledEmail: data.email,
+              scheduleEnabled: true,
+              timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
+            },
           },
         });
       },
@@ -221,9 +325,10 @@ export const useAppStore = create<AppState>()(
       },
 
       switchRole: (newRole) => {
-        const currentEmail = get().currentUser.email;
-        const currentRole = get().currentUser.role;
-        const adminList = get().adminEmails;
+        const state = get();
+        const currentEmail = state.currentUser.email;
+        const currentRole = state.currentUser.role;
+        const adminList = state.adminEmails;
 
         // ONLY authorized admins (sgdesilva1113@gmail.com or assigned admins) have authority to switch roles
         if (!canSwitchRole(currentEmail, currentRole, adminList)) {
@@ -231,30 +336,166 @@ export const useAppStore = create<AppState>()(
           return false;
         }
 
-        // Switching roles must always require re-authentication (redirect to login)
-        set({
-          isAuthenticated: false,
+        // Switching roles MUST NOT log out the user! Seamless in-place role switch
+        const isTargetAdmin = newRole === 'admin';
+        const newName = isTargetAdmin
+          ? (isPrimaryAdmin(currentEmail) ? 'Platform Owner & Admin' : 'Admin Operator')
+          : (state.currentUser.name === 'Platform Owner & Admin' || state.currentUser.name === 'Admin Operator'
+              ? currentEmail.split('@')[0]
+              : state.currentUser.name);
+
+        set((s) => ({
           currentUser: {
-            ...get().currentUser,
+            ...s.currentUser,
             role: newRole,
-            email: currentEmail,
-            name: newRole === 'admin'
-              ? (isPrimaryAdmin(currentEmail) ? 'Platform Owner & Admin' : 'Admin Operator')
-              : get().currentUser.name,
+            name: newName,
           },
+          adminRolePreference: newRole,
+          lastActiveAt: Date.now(),
+        }));
+
+        state.addNotification({
+          title: 'Role Switched',
+          message: `Switched to ${newRole === 'admin' ? 'Administrator' : 'Normal User'} mode.`,
+          type: 'system',
+          importance: 'normal',
         });
+
         return true;
       },
 
-      logout: () => {
+      logout: async () => {
+        try {
+          if (supabase) {
+            await supabase.auth.signOut();
+          }
+        } catch (err) {
+          console.warn('Supabase signOut error:', err);
+        }
+
+        // Clear any auth tokens from browser storage
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.clear();
+            const keysToRemove: string[] = [];
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && (key.startsWith('sb-') || key.includes('supabase.auth'))) {
+                keysToRemove.push(key);
+              }
+            }
+            keysToRemove.forEach((k) => localStorage.removeItem(k));
+          } catch {}
+        }
+
+        // Completely reset all private session details
         set({
           isAuthenticated: false,
+          currentUser: ANONYMOUS_USER,
+          bookmarkedIds: [],
+          watchlistIds: [],
+          interests: [],
+          notifications: [],
+          notifiedKeys: [],
+          activeToast: null,
+          toastQueue: [],
+          newsletterPrefs: {
+            frequency: 'daily',
+            categories: ['AI/ML', 'Languages', 'Cloud', 'Cybersecurity', 'DevOps'],
+            enableAlerts: false,
+            alertCategories: [],
+            maxAlertsPerDay: 1,
+            quietHoursStart: '22:00',
+            quietHoursEnd: '07:00',
+            deliveryTime: '08:00',
+            deliveryDayOfWeek: 1,
+            deliveryDayOfMonth: 1,
+            scheduledEmail: '',
+            scheduleEnabled: false,
+            timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
+          },
+          lastActiveAt: 0,
+          sessionTimedOut: false,
         });
+      },
+
+      deleteAccount: async () => {
+        const currentEmail = get().currentUser.email;
+        const currentId = get().currentUser.id;
+
+        try {
+          await fetch('/api/auth/delete-account', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: currentEmail, userId: currentId }),
+          });
+        } catch (err) {
+          console.warn('Backend delete-account request error:', err);
+        }
+
+        try {
+          if (supabase) {
+            await supabase.auth.signOut();
+          }
+        } catch (err) {
+          console.warn('Supabase signOut error during deleteAccount:', err);
+        }
+
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.clear();
+            const keysToRemove: string[] = [];
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && (key.startsWith('sb-') || key.includes('supabase.auth') || key === 'teqvu-storage')) {
+                keysToRemove.push(key);
+              }
+            }
+            keysToRemove.forEach((k) => localStorage.removeItem(k));
+          } catch {}
+        }
+
+        const remainingRegistered = (get().registeredEmails || []).filter(
+          (e) => e.trim().toLowerCase() !== currentEmail.trim().toLowerCase()
+        );
+
+        set({
+          isAuthenticated: false,
+          currentUser: ANONYMOUS_USER,
+          registeredEmails: remainingRegistered,
+          bookmarkedIds: [],
+          watchlistIds: [],
+          interests: [],
+          notifications: [],
+          notifiedKeys: [],
+          activeToast: null,
+          toastQueue: [],
+          newsletterPrefs: {
+            frequency: 'daily',
+            categories: ['AI/ML', 'Languages', 'Cloud', 'Cybersecurity', 'DevOps'],
+            enableAlerts: false,
+            alertCategories: [],
+            maxAlertsPerDay: 1,
+            quietHoursStart: '22:00',
+            quietHoursEnd: '07:00',
+            deliveryTime: '08:00',
+            deliveryDayOfWeek: 1,
+            deliveryDayOfMonth: 1,
+            scheduledEmail: '',
+            scheduleEnabled: false,
+            timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
+          },
+          lastActiveAt: 0,
+          sessionTimedOut: false,
+        });
+
+        return true;
       },
 
       // Bookmarks
       bookmarkedIds: ['art-001', 'paper-001', 'art-002'],
-      toggleBookmark: (id) =>
+      toggleBookmark: (id) => {
+        if (!get().isAuthenticated) return;
         set((state) => {
           const exists = state.bookmarkedIds.includes(id);
           return {
@@ -262,12 +503,14 @@ export const useAppStore = create<AppState>()(
               ? state.bookmarkedIds.filter((item) => item !== id)
               : [...state.bookmarkedIds, id],
           };
-        }),
+        });
+      },
       isBookmarked: (id) => get().bookmarkedIds.includes(id),
 
       // Watchlist
       watchlistIds: ['rust', 'llm-agents', 'nextjs', 'pgvector', 'ebpf'],
-      toggleWatchlist: (id) =>
+      toggleWatchlist: (id) => {
+        if (!get().isAuthenticated) return;
         set((state) => {
           const exists = state.watchlistIds.includes(id);
           return {
@@ -275,12 +518,14 @@ export const useAppStore = create<AppState>()(
               ? state.watchlistIds.filter((item) => item !== id)
               : [...state.watchlistIds, id],
           };
-        }),
+        });
+      },
       isWatching: (id) => get().watchlistIds.includes(id),
 
       // Interests
       interests: ['ai', 'web-dev', 'software-eng', 'cloud', 'cybersecurity'],
-      toggleInterest: (id) =>
+      toggleInterest: (id) => {
+        if (!get().isAuthenticated) return;
         set((state) => {
           const exists = state.interests.includes(id);
           const newInterests = exists
@@ -290,7 +535,8 @@ export const useAppStore = create<AppState>()(
             interests: newInterests,
             currentUser: { ...state.currentUser, interests: newInterests },
           };
-        }),
+        });
+      },
 
       // Newsletter
       newsletterPrefs: {
@@ -304,14 +550,16 @@ export const useAppStore = create<AppState>()(
         deliveryTime: '08:00',
         deliveryDayOfWeek: 1,
         deliveryDayOfMonth: 1,
-        scheduledEmail: 'sgdesilva1113@gmail.com',
-        scheduleEnabled: true,
+        scheduledEmail: '',
+        scheduleEnabled: false,
         timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
       },
-      updateNewsletterPrefs: (prefs) =>
+      updateNewsletterPrefs: (prefs) => {
+        if (!get().isAuthenticated) return;
         set((state) => ({
           newsletterPrefs: { ...state.newsletterPrefs, ...prefs },
-        })),
+        }));
+      },
 
       // Real-Time Notifications
       notifications: [],
@@ -320,6 +568,7 @@ export const useAppStore = create<AppState>()(
       toastQueue: [],
 
       addNotification: (item) => {
+        if (!get().isAuthenticated) return;
         const id = item.id || `notif_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
         const timestamp = item.timestamp || new Date().toISOString();
         const newNotif: AppNotification = {
@@ -414,7 +663,10 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         isAuthenticated: state.isAuthenticated,
         currentUser: state.currentUser,
+        adminRolePreference: state.adminRolePreference,
+        lastActiveAt: state.lastActiveAt,
         adminEmails: state.adminEmails,
+        registeredEmails: state.registeredEmails,
         bookmarkedIds: state.bookmarkedIds,
         watchlistIds: state.watchlistIds,
         interests: state.interests,
@@ -423,6 +675,16 @@ export const useAppStore = create<AppState>()(
         notifications: state.notifications,
         notifiedKeys: state.notifiedKeys,
       }),
+      onRehydrateStorage: () => (state) => {
+        // If unauthenticated, sanitize state so no previous user details are ever exposed
+        if (state && !state.isAuthenticated) {
+          state.currentUser = ANONYMOUS_USER;
+          state.bookmarkedIds = [];
+          state.watchlistIds = [];
+          state.interests = [];
+          state.notifications = [];
+        }
+      },
     }
   )
 );

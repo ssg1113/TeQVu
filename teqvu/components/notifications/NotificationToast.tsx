@@ -118,13 +118,17 @@ export function NotificationToast() {
             <div className="flex items-center gap-1.5 flex-wrap">
               <span
                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-wider uppercase border ${
-                  isTrend
+                  activeToast.importance === 'critical'
+                    ? 'bg-rose-500/20 border-rose-500/40 text-rose-600 dark:text-rose-300 animate-pulse'
+                    : isTrend
                     ? 'bg-purple-500/15 border-purple-500/30 text-purple-600 dark:text-purple-300'
                     : 'bg-rose-500/15 border-rose-500/30 text-rose-600 dark:text-rose-300'
                 }`}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-current animate-ping" />
-                {isTrend ? 'Breakout Tech Trend' : 'Breaking Tech Signal'}
+                {activeToast.importance === 'critical'
+                  ? 'CRITICAL TECH ALERT'
+                  : isTrend ? 'Breakout Tech Trend' : 'Breaking Tech Signal'}
               </span>
 
               {activeToast.metric && (

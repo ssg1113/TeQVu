@@ -5,10 +5,60 @@ import { useAppStore } from '../../lib/store/useAppStore';
 import { playNotificationSound } from '../../lib/utils';
 import type { Technology, Article, AppNotification } from '../../lib/types';
 
+// Minimum time between real-time notification alerts (30 minutes)
+const MIN_NOTIFICATION_INTERVAL_MS = 30 * 60 * 1000;
+// Polling cycle: check once every 15 minutes (stepped down from 1 minute)
+const CHECK_CYCLE_MS = 15 * 60 * 1000;
+
+// High-severity keywords that signify truly critical tech events
+const CRITICAL_SECURITY_KEYWORDS = [
+  'zero-day',
+  '0-day',
+  'critical cve',
+  'critical vulnerability',
+  'actively exploited',
+  'remote code execution',
+  'emergency patch',
+  'major security breach',
+  'catastrophic exploit',
+  'global infrastructure outage',
+];
+
+const CRITICAL_BREAKTHROUGH_KEYWORDS = [
+  'gpt-5',
+  'quantum supremacy',
+  'agi breakthrough',
+  'revolutionary reasoning architecture',
+  'supercomputing milestone',
+];
+
+function isWithinQuietHours(quietStart?: string, quietEnd?: string): boolean {
+  if (!quietStart || !quietEnd) return false;
+  try {
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const [startH, startM] = quietStart.split(':').map(Number);
+    const [endH, endM] = quietEnd.split(':').map(Number);
+
+    const startMinutes = startH * 60 + (startM || 0);
+    const endMinutes = endH * 60 + (endM || 0);
+
+    if (startMinutes <= endMinutes) {
+      return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+    } else {
+      // Over midnight (e.g. 22:00 to 07:00)
+      return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+    }
+  } catch {
+    return false;
+  }
+}
+
 export function NotificationManager() {
   const {
+    isAuthenticated,
     watchlistIds,
-    interests,
     newsletterPrefs,
     addNotification,
     hasNotifiedKey,
@@ -16,183 +66,169 @@ export function NotificationManager() {
   } = useAppStore();
 
   const isCheckingRef = useRef(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const checkSignals = useCallback(async () => {
-    if (isCheckingRef.current) return;
+    // 1. Guard against unauthenticated users or alerts disabled
+    if (!isAuthenticated || newsletterPrefs.enableAlerts === false || isCheckingRef.current) {
+      return;
+    }
+
+    // 2. Enforce strict pacing / cooldown (maximum 1 notification per 30 minutes)
+    if (typeof window !== 'undefined') {
+      const lastDispatchStr = localStorage.getItem('teqvu_last_critical_dispatch');
+      if (lastDispatchStr) {
+        const lastDispatch = parseInt(lastDispatchStr, 10);
+        if (!isNaN(lastDispatch) && Date.now() - lastDispatch < MIN_NOTIFICATION_INTERVAL_MS) {
+          return;
+        }
+      }
+    }
+
     isCheckingRef.current = true;
 
     try {
-      // Fetch latest news and trends simultaneously
+      // Fetch latest articles and trends simultaneously
       const [newsRes, trendsRes] = await Promise.allSettled([
-        fetch('/api/tech-news?limit=15', { cache: 'no-store' }),
+        fetch('/api/tech-news?limit=20', { cache: 'no-store' }),
         fetch('/api/trends?timeframe=24h', { cache: 'no-store' }),
       ]);
 
-      let newNotificationsToQueue: AppNotification[] = [];
+      let candidateNotification: AppNotification | null = null;
 
-      // 1. EVALUATE MOST IMPORTANT NEWS UPDATE
+      // 3. EVALUATE ARTICLES FOR RARE, HIGH-SEVERITY EVENTS
       if (newsRes.status === 'fulfilled' && newsRes.value.ok) {
         const newsData = await newsRes.value.json();
-        if (newsData.success && Array.isArray(newsData.articles) && newsData.articles.length > 0) {
+        if (newsData.success && Array.isArray(newsData.articles)) {
           const articles: Article[] = newsData.articles;
 
-          // Priority score for articles based on source trust, breaking keywords, and freshness
-          const scoredArticles = articles.map((article) => {
+          for (const article of articles) {
             const titleLower = article.title.toLowerCase();
             const summaryLower = (article.summary || '').toLowerCase();
-            let score = article.source?.trustScore || 8;
 
-            // Breaking / urgent keyword weighting
-            const highImpactWords = [
-              'breaking',
-              'critical vulnerability',
-              'zero-day',
-              'unveils',
-              'launches',
-              'breakthrough',
-              'releases',
-              'major update',
-              'merges',
-              'acquires',
-              'open source',
-              'quantum supremacy',
-              'gpt-5',
-              'gemini',
-              'claude',
-              'deepmind',
-              'nvidia',
-            ];
-            for (const word of highImpactWords) {
-              if (titleLower.includes(word)) score += 4;
-              else if (summaryLower.includes(word)) score += 2;
-            }
+            const isSecurityCritical = CRITICAL_SECURITY_KEYWORDS.some(
+              (kw) => titleLower.includes(kw) || summaryLower.includes(kw)
+            );
 
-            // User interest match weighting
-            if (interests.some((int) => article.category.toLowerCase().includes(int.toLowerCase()))) {
-              score += 3;
-            }
+            const isTechBreakthrough = CRITICAL_BREAKTHROUGH_KEYWORDS.some(
+              (kw) => titleLower.includes(kw) || summaryLower.includes(kw)
+            );
 
-            return { article, score };
-          });
+            // Article qualifies ONLY if it represents a critical zero-day, monumental frontier breakthrough, or massive multi-outlet breaking cluster
+            if (isSecurityCritical || isTechBreakthrough || (article.isBreaking && (article.clusterSize || 0) >= 6)) {
+              const articleKey = `critical-news-${article.id || titleLower.slice(0, 30).replace(/\s+/g, '-')}`;
 
-          scoredArticles.sort((a, b) => b.score - a.score);
-          const topArticle = scoredArticles[0]?.article;
+              if (!hasNotifiedKey(articleKey)) {
+                recordNotifiedKey(articleKey);
 
-          if (topArticle) {
-            // Stable signature key for the article
-            const articleKey = `article-${topArticle.id || topArticle.title.toLowerCase().slice(0, 35).replace(/\s+/g, '-')}`;
-
-            if (!hasNotifiedKey(articleKey)) {
-              recordNotifiedKey(articleKey);
-
-              const isBreaking =
-                topArticle.isBreaking ||
-                /breaking|unveils|critical|vulnerability|launches|breakthrough/i.test(topArticle.title);
-
-              const newsNotification: AppNotification = {
-                id: `notif-news-${Date.now()}`,
-                title: topArticle.title,
-                message: topArticle.summary
-                  ? topArticle.summary.slice(0, 160) + (topArticle.summary.length > 160 ? '...' : '')
-                  : `High-priority intelligence report from ${topArticle.source.name}.`,
-                type: isBreaking ? 'breaking' : 'update',
-                category: topArticle.category,
-                timestamp: new Date().toISOString(),
-                url: topArticle.url,
-                link: '/latest',
-                isRead: false,
-                importance: 'high',
-                metric: `${topArticle.source.name || 'Verified Source'}`,
-                sourceName: topArticle.source.name,
-              };
-
-              newNotificationsToQueue.push(newsNotification);
+                candidateNotification = {
+                  id: `notif-crit-${Date.now()}`,
+                  title: isSecurityCritical
+                    ? `Critical Security Alert: ${article.title}`
+                    : `Frontier Tech Breakthrough: ${article.title}`,
+                  message: article.summary
+                    ? article.summary.slice(0, 160) + (article.summary.length > 160 ? '...' : '')
+                    : `Urgent intelligence report verified by ${article.source?.name || 'Security Wire'}.`,
+                  type: 'breaking',
+                  category: article.category,
+                  timestamp: new Date().toISOString(),
+                  url: article.url,
+                  link: '/latest',
+                  isRead: false,
+                  importance: 'critical',
+                  metric: isSecurityCritical ? 'Zero-Day Advisory' : 'Frontier Milestone',
+                  sourceName: article.source?.name || 'Verified Signal',
+                };
+                break; // Found top critical event; stop searching articles
+              }
             }
           }
         }
       }
 
-      // 2. EVALUATE MOST IMPORTANT TECHNOLOGY TREND
-      if (trendsRes.status === 'fulfilled' && trendsRes.value.ok) {
+      // 4. EVALUATE TRENDS ONLY FOR PHENOMENAL BREAKOUT SURGES (>150% Velocity)
+      if (!candidateNotification && trendsRes.status === 'fulfilled' && trendsRes.value.ok) {
         const trendsData = await trendsRes.value.json();
-        const techList: Technology[] =
-          trendsData.technologies || trendsData.trends || [];
+        const techList: Technology[] = trendsData.technologies || trendsData.trends || [];
 
-        if (techList.length > 0) {
-          // Sort to find the highest velocity emerging trend
-          const sortedTechs = [...techList].sort((a, b) => {
-            // Favor followed watchlist techs
-            const aWatched = watchlistIds.includes(a.id) ? 30 : 0;
-            const bWatched = watchlistIds.includes(b.id) ? 30 : 0;
-            return (b.growth + bWatched) - (a.growth + aWatched);
-          });
+        // Filter strictly to massive breakouts (>150% growth with high mention volume)
+        const criticalSurges = techList.filter((tech) => {
+          const isExtremeGrowth = tech.growth >= 150 && (tech.mentions || 0) >= 12000;
+          const isWatchlistSurge = watchlistIds.includes(tech.id) && tech.growth >= 120;
+          return isExtremeGrowth || isWatchlistSurge;
+        });
 
-          const topTrend = sortedTechs[0];
+        if (criticalSurges.length > 0) {
+          criticalSurges.sort((a, b) => b.growth - a.growth);
+          const topBreakout = criticalSurges[0];
+          const trendKey = `critical-surge-${topBreakout.slug || topBreakout.id}-${Math.floor(topBreakout.growth / 50)}`;
 
-          if (topTrend) {
-            // Unique signature key combining tech slug and growth tier
-            const growthTier = Math.floor((topTrend.growth || 0) / 15);
-            const trendKey = `trend-${topTrend.slug || topTrend.id}-tier${growthTier}`;
+          if (!hasNotifiedKey(trendKey)) {
+            recordNotifiedKey(trendKey);
 
-            if (!hasNotifiedKey(trendKey)) {
-              recordNotifiedKey(trendKey);
-
-              const isWatchlist = watchlistIds.includes(topTrend.id);
-              const trendNotification: AppNotification = {
-                id: `notif-trend-${Date.now()}`,
-                title: isWatchlist
-                  ? `Watchlist Surge: ${topTrend.name}`
-                  : `Breakout Trend: ${topTrend.name}`,
-                message:
-                  topTrend.whyTrending ||
-                  topTrend.description ||
-                  `Mentions and velocity surging across open-source repositories and research papers.`,
-                type: isWatchlist ? 'watchlist' : 'trend',
-                category: topTrend.category,
-                timestamp: new Date().toISOString(),
-                url: topTrend.github || topTrend.website || `/technologies/${topTrend.slug}`,
-                link: `/trending`,
-                isRead: false,
-                importance: 'high',
-                metric: `+${topTrend.growth}% Velocity`,
-                sourceName: 'Tech Radar',
-                relatedTech: topTrend.name,
-              };
-
-              newNotificationsToQueue.push(trendNotification);
-            }
+            candidateNotification = {
+              id: `notif-surge-${Date.now()}`,
+              title: `Unprecedented Breakout Surge: ${topBreakout.name}`,
+              message:
+                topBreakout.whyTrending ||
+                `Exponential velocity (+${topBreakout.growth}%) surging across global open-source infrastructure and research clusters.`,
+              type: 'trend',
+              category: topBreakout.category,
+              timestamp: new Date().toISOString(),
+              url: topBreakout.github || topBreakout.website || `/technologies/${topBreakout.slug}`,
+              link: '/trending',
+              isRead: false,
+              importance: 'critical',
+              metric: `+${topBreakout.growth}% Surge`,
+              sourceName: 'Tech Radar Peak',
+              relatedTech: topBreakout.name,
+            };
           }
         }
       }
 
-      // 3. DISPATCH NOTIFICATIONS WITH QUEUE PACING
-      if (newNotificationsToQueue.length > 0) {
-        newNotificationsToQueue.forEach((notif) => {
-          addNotification(notif);
-        });
-        playNotificationSound();
+      // 5. DISPATCH THE SINGLE CRITICAL NOTIFICATION (Paced & Respecting Quiet Hours)
+      if (candidateNotification) {
+        addNotification(candidateNotification);
 
-        // Native browser notification if permitted
-        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-          try {
-            new Notification(newNotificationsToQueue[0].title, {
-              body: newNotificationsToQueue[0].message,
-              icon: '/logo-emblem.png',
-            });
-          } catch {
-            // ignore
+        // Record timestamp to enforce 30-minute cooldown
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('teqvu_last_critical_dispatch', Date.now().toString());
+        }
+
+        // Only play audio if not during user's configured quiet hours
+        const quiet = isWithinQuietHours(
+          newsletterPrefs.quietHoursStart,
+          newsletterPrefs.quietHoursEnd
+        );
+
+        if (!quiet) {
+          playNotificationSound();
+
+          // Native browser alert for critical breaking news if permitted
+          if (
+            typeof window !== 'undefined' &&
+            'Notification' in window &&
+            Notification.permission === 'granted'
+          ) {
+            try {
+              new Notification(candidateNotification.title, {
+                body: candidateNotification.message,
+                icon: '/icon.png',
+              });
+            } catch {
+              // ignore
+            }
           }
         }
       }
     } catch (err) {
-      console.warn('Notification signal check failed:', err);
+      console.warn('Critical radar check note:', err);
     } finally {
       isCheckingRef.current = false;
     }
   }, [
+    isAuthenticated,
     watchlistIds,
-    interests,
     newsletterPrefs,
     addNotification,
     hasNotifiedKey,
@@ -200,26 +236,21 @@ export function NotificationManager() {
   ]);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     // Initial check on mount
     checkSignals();
 
-    // Check periodically every 60 seconds
-    const interval = setInterval(checkSignals, 60 * 1000);
+    // Check periodically on a 15-minute interval (stepped down from aggressive 1-minute loop)
+    const interval = setInterval(checkSignals, CHECK_CYCLE_MS);
 
-    // Also check when window regains focus
-    const handleFocus = () => {
-      checkSignals();
-    };
-    window.addEventListener('focus', handleFocus);
-
-    // Optional global debug hook for manual test in console
+    // Optional global debug hook for testing critical signals in browser console
     (window as any).__teqvuCheckSignals = checkSignals;
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('focus', handleFocus);
     };
-  }, [checkSignals]);
+  }, [checkSignals, isAuthenticated]);
 
   return null;
 }

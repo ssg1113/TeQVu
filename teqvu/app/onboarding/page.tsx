@@ -9,11 +9,22 @@ import { useAppStore } from '../../lib/store/useAppStore';
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { interests, toggleInterest, currentUser, updateUser, updateNewsletterPrefs, newsletterPrefs } = useAppStore();
+  const { interests, toggleInterest, currentUser, updateUser, updateNewsletterPrefs, newsletterPrefs, isAuthenticated } = useAppStore();
+  const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState<number>(1);
   const [occupation, setOccupation] = useState<any>(currentUser.occupation || 'Software Engineer');
-  const [name, setName] = useState(currentUser.name || 'Alex Rivera');
+  const [name, setName] = useState(currentUser.name || '');
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly'>(newsletterPrefs.frequency as any || 'daily');
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (mounted && !isAuthenticated) {
+      router.replace('/signin?notice=auth_required&returnUrl=/onboarding');
+    }
+  }, [mounted, isAuthenticated, router]);
 
   const occupations = ['Student', 'Software Engineer', 'Researcher', 'Academic', 'IT Professional', 'Other'];
 

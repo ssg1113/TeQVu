@@ -71,6 +71,7 @@ export default function AdminDashboardPage() {
   const router = useRouter();
   const {
     currentUser,
+    isAuthenticated,
     switchRole,
     adminEmails,
     assignAdmin,
@@ -83,8 +84,13 @@ export default function AdminDashboardPage() {
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [delegationSuccess, setDelegationSuccess] = useState<string | null>(null);
   const [delegationError, setDelegationError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const adminStats = ADMIN_STATS;
   const processingJobs = PROCESSING_JOBS;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     fetch('/api/trends')
@@ -148,7 +154,49 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // RESTRICTED ACCESS SCREEN FOR NORMAL USERS
+  // 1. UNAUTHENTICATED VISITOR GATE
+  if (mounted && !isAuthenticated) {
+    return (
+      <DashboardLayout>
+        <div className="py-16 flex flex-col items-center justify-center text-center max-w-lg mx-auto space-y-6 animate-fade-in">
+          <div className="w-16 h-16 rounded-3xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 shadow-xl shadow-purple-500/10">
+            <Lock className="w-8 h-8" />
+          </div>
+
+          <div>
+            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+              Access Restricted • 401 Unauthorized
+            </span>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white mt-3">
+              Administrator Clearance Required
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+              This console is strictly reserved for platform operators. Please sign in with an authorized administrator account to proceed.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+            <Link
+              href={`/signin?notice=admin_required&email=${encodeURIComponent(PRIMARY_ADMIN_EMAIL)}`}
+              className="w-full sm:flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 shadow-lg shadow-purple-500/20 transition"
+            >
+              <Shield className="w-4 h-4" />
+              <span>Sign In with Admin Account</span>
+            </Link>
+
+            <Link
+              href="/home"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-white"
+            >
+              Back to Home
+            </Link>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // 2. RESTRICTED ACCESS SCREEN FOR NORMAL USERS (AUTHENTICATED)
   if (currentUser.role !== 'admin') {
     const isAuthorized = canSwitchRole(currentUser.email, currentUser.role, adminEmails);
 
@@ -199,10 +247,7 @@ export default function AdminDashboardPage() {
               <button
                 type="button"
                 onClick={() => {
-                  const success = switchRole('admin');
-                  if (success) {
-                    router.push('/signin?switched=true&role=admin');
-                  }
+                  switchRole('admin');
                 }}
                 className="w-full sm:flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 shadow-lg shadow-purple-500/20 transition cursor-pointer"
               >
@@ -692,9 +737,9 @@ export default function AdminDashboardPage() {
                 type="button"
                 onClick={() => {
                   const targetRole = currentUser.role === 'admin' ? 'user' : 'admin';
-                  const success = switchRole(targetRole);
-                  if (success) {
-                    router.push(`/signin?switched=true&role=${targetRole}`);
+                  switchRole(targetRole);
+                  if (targetRole === 'user') {
+                    router.push('/home');
                   }
                 }}
                 className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-slate-700 hover:bg-slate-600 transition whitespace-nowrap self-start sm:self-center cursor-pointer"

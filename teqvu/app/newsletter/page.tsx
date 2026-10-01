@@ -27,10 +27,11 @@ import { Logo } from '../../components/ui/Logo';
 import type { DeliveryLog, NewsletterSchedule } from '../../lib/types';
 
 export default function NewsletterPage() {
-  const { newsletterPrefs, updateNewsletterPrefs, currentUser } = useAppStore();
+  const { newsletterPrefs, updateNewsletterPrefs, currentUser, isAuthenticated } = useAppStore();
+  const [mounted, setMounted] = useState(false);
 
   const [targetEmail, setTargetEmail] = useState(
-    newsletterPrefs.scheduledEmail || currentUser?.email || 'sgdesilva1113@gmail.com'
+    currentUser?.email || newsletterPrefs.scheduledEmail || ''
   );
   const [serverSchedule, setServerSchedule] = useState<NewsletterSchedule | null>(null);
   const [isSendingSample, setIsSendingSample] = useState(false);
@@ -46,6 +47,16 @@ export default function NewsletterPage() {
 
   const [deliveryLogs, setDeliveryLogs] = useState<DeliveryLog[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (currentUser?.email && !targetEmail) {
+      setTargetEmail(currentUser.email);
+    }
+  }, [currentUser?.email, targetEmail]);
 
   // Live preview items for the mockup card
   const [previewArticle, setPreviewArticle] = useState<any>({
@@ -70,6 +81,7 @@ export default function NewsletterPage() {
 
   // Fetch backend schedule & delivery logs on mount
   const fetchScheduleAndLogs = useCallback(async () => {
+    if (!isAuthenticated) return;
     setIsLoadingLogs(true);
     try {
       const res = await fetch(`/api/newsletter/schedule?_t=${Date.now()}`, {
@@ -93,11 +105,13 @@ export default function NewsletterPage() {
     } finally {
       setIsLoadingLogs(false);
     }
-  }, [targetEmail]);
+  }, [targetEmail, isAuthenticated]);
 
   useEffect(() => {
-    fetchScheduleAndLogs();
-  }, [fetchScheduleAndLogs]);
+    if (isAuthenticated) {
+      fetchScheduleAndLogs();
+    }
+  }, [fetchScheduleAndLogs, isAuthenticated]);
 
   const categories = [
     'AI/ML',
@@ -186,6 +200,46 @@ export default function NewsletterPage() {
     }
     return `At ${timeFormatted} (configured in Profile)`;
   };
+
+  if (mounted && !isAuthenticated) {
+    return (
+      <DashboardLayout>
+        <div className="py-20 flex flex-col items-center justify-center text-center max-w-lg mx-auto space-y-6 animate-fade-in">
+          <div className="w-16 h-16 rounded-3xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-xl shadow-cyan-500/10">
+            <Mail className="w-8 h-8" />
+          </div>
+
+          <div>
+            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              Personalized Intelligence Dispatch
+            </span>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white mt-3">
+              Sign In to Configure Newsletter & Alerts
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+              Tailor your automated delivery schedule, topical categories, anti-spam filters, and instant developer alerts to your verified email account.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+            <Link
+              href="/signin?notice=auth_required&returnUrl=/newsletter"
+              className="w-full sm:flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 shadow-lg shadow-cyan-500/20 transition"
+            >
+              <span>Sign In to Newsletter</span>
+            </Link>
+
+            <Link
+              href="/trending"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-white"
+            >
+              Explore Trending
+            </Link>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

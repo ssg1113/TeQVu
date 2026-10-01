@@ -10,10 +10,15 @@ import { useAppStore } from '../../lib/store/useAppStore';
 import type { Article, Technology } from '../../lib/types';
 
 export default function ForYouPage() {
-  const { interests, watchlistIds } = useAppStore();
+  const { interests, watchlistIds, isAuthenticated } = useAppStore();
+  const [mounted, setMounted] = useState(false);
   const [articlesList, setArticlesList] = useState<Article[]>([]);
   const [techList, setTechList] = useState<Technology[]>([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchLiveData = useCallback(async () => {
     setLoading(true);
@@ -72,7 +77,9 @@ export default function ForYouPage() {
               Personalized Feed
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Curated dynamically based on your interests ({interests.length} topics) and watchlist ({watchlistIds.length} tracked).
+              {mounted && !isAuthenticated
+                ? 'Exploring macro technology intelligence stream across AI, system architecture, and cloud platforms.'
+                : `Curated dynamically based on your interests (${interests.length} topics) and watchlist (${watchlistIds.length} tracked).`}
             </p>
           </div>
 
@@ -92,7 +99,7 @@ export default function ForYouPage() {
             </button>
 
             <Link
-              href="/onboarding"
+              href={mounted && !isAuthenticated ? '/signin?notice=auth_required&returnUrl=/onboarding' : '/onboarding'}
               className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold hover:border-cyan-500/50 transition"
             >
               <SlidersHorizontal className="w-3.5 h-3.5 text-cyan-400" />
@@ -100,6 +107,39 @@ export default function ForYouPage() {
             </Link>
           </div>
         </div>
+
+        {/* Guest Banner if not authenticated */}
+        {mounted && !isAuthenticated && (
+          <div className="p-4 sm:p-5 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Viewing Public Trend Intelligence Feed
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Sign in to activate tailored algorithmic recommendations, personalized technology tracking, and custom notification thresholds.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Link
+                href="/signin?notice=auth_required&returnUrl=/for-you"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 shadow-md shadow-cyan-500/20 transition"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/signup"
+                className="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-white transition"
+              >
+                Create Account
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* 1. TOP RECOMMENDED */}
         <section>

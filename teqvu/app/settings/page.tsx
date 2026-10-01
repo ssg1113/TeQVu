@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Settings,
   User,
@@ -26,11 +27,17 @@ import {
   Fingerprint,
   RefreshCw,
   Smartphone,
+  Trash2,
+  Radio,
+  Zap,
+  VolumeX,
+  Flame,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { useAppStore } from '../../lib/store/useAppStore';
 import { PasswordStrengthIndicator } from '../../components/ui/PasswordStrengthIndicator';
+import { DeleteAccountModal } from '../../components/ui/DeleteAccountModal';
 import { updateUserPassword } from '../../lib/supabase/client';
 import { PRIMARY_ADMIN_EMAIL, canSwitchRole } from '../../lib/security/admin';
 
@@ -42,6 +49,7 @@ export default function SettingsPage() {
     newsletterPrefs,
     updateNewsletterPrefs,
     currentUser,
+    isAuthenticated,
     adminEmails,
     setPasswordStatus,
     switchRole,
@@ -49,12 +57,27 @@ export default function SettingsPage() {
   } = useAppStore();
   const [activeTab, setActiveTab] = useState<'appearance' | 'notifications' | 'privacy' | 'security'>('appearance');
   const [saved, setSaved] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // Notification toggles
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Notification toggles & High-Importance Radar
   const [emailDigest, setEmailDigest] = useState(true);
-  const [trendAlerts, setTrendAlerts] = useState(true);
+  const [trendAlerts, setTrendAlerts] = useState(newsletterPrefs.enableAlerts ?? true);
   const [watchlistAlerts, setWatchlistAlerts] = useState(true);
   const [researchUpdates, setResearchUpdates] = useState(false);
+  const [quietHoursStart, setQuietHoursStart] = useState(newsletterPrefs.quietHoursStart || '22:00');
+  const [quietHoursEnd, setQuietHoursEnd] = useState(newsletterPrefs.quietHoursEnd || '07:00');
+
+  useEffect(() => {
+    if (newsletterPrefs) {
+      if (newsletterPrefs.enableAlerts !== undefined) setTrendAlerts(newsletterPrefs.enableAlerts);
+      if (newsletterPrefs.quietHoursStart) setQuietHoursStart(newsletterPrefs.quietHoursStart);
+      if (newsletterPrefs.quietHoursEnd) setQuietHoursEnd(newsletterPrefs.quietHoursEnd);
+    }
+  }, [newsletterPrefs]);
 
   // Security & Password Management State
   const [currentPassword, setCurrentPassword] = useState('');
@@ -71,6 +94,7 @@ export default function SettingsPage() {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(currentUser.twoFactorEnabled || false);
   const [show2FAModal, setShow2FAModal] = useState(false);
   const [sessionsRevoked, setSessionsRevoked] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,9 +154,54 @@ export default function SettingsPage() {
   };
 
   const handleSave = () => {
+    updateNewsletterPrefs({
+      enableAlerts: trendAlerts,
+      quietHoursStart,
+      quietHoursEnd,
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
+
+  if (mounted && !isAuthenticated) {
+    return (
+      <DashboardLayout>
+        <div className="py-16 flex flex-col items-center justify-center text-center max-w-lg mx-auto space-y-6 animate-fade-in">
+          <div className="w-16 h-16 rounded-3xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-xl shadow-cyan-500/10">
+            <Lock className="w-8 h-8" />
+          </div>
+
+          <div>
+            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              Authentication Required
+            </span>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white mt-3">
+              Settings & Security Protected
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+              Please sign in to manage your validated master password, two-factor authentication, appearance, and notification rules.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+            <Link
+              href="/signin?notice=auth_required&returnUrl=/settings"
+              className="w-full sm:flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 shadow-lg shadow-cyan-500/20 transition"
+            >
+              <span>Sign In to Settings</span>
+            </Link>
+
+            <Link
+              href="/home"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-white"
+            >
+              Back to Home
+            </Link>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -225,49 +294,182 @@ export default function SettingsPage() {
 
         {/* TAB: NOTIFICATIONS */}
         {activeTab === 'notifications' && (
-          <div className="p-6 rounded-2xl bg-white dark:bg-[#0f1629] border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-4">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Notification Preferences</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Granular toggles for in-app signals and email dispatches.
-              </p>
-            </div>
-
-            <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-              {[
-                { title: 'Scheduled Intelligence Digest', desc: 'Daily/weekly briefing sent via email.', state: emailDigest, setState: setEmailDigest },
-                { title: 'Emerging Trend Priority Signals', desc: 'Alert when a technology crosses >100% velocity and 20+ sources.', state: trendAlerts, setState: setTrendAlerts },
-                { title: 'Watchlist Activity Updates', desc: 'Notifications when followed technologies have major releases.', state: watchlistAlerts, setState: setWatchlistAlerts },
-                { title: 'Academic Research Preprints', desc: 'Alerts for trending arXiv and ACM papers in your chosen areas.', state: researchUpdates, setState: setResearchUpdates },
-              ].map((item, idx) => (
-                <div key={idx} className="py-3.5 flex items-center justify-between">
-                  <div>
-                    <span className="font-bold text-slate-900 dark:text-white block">{item.title}</span>
-                    <span className="text-slate-400 text-[11px]">{item.desc}</span>
+          <div className="space-y-6">
+            {/* Critical Radar Banner */}
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-rose-500/10 via-amber-500/5 to-cyan-500/10 border border-rose-500/20 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                    <Flame className="w-5 h-5 animate-pulse" />
                   </div>
-                  <button
-                    onClick={() => item.setState(!item.state)}
-                    className={`w-11 h-6 rounded-full transition-colors relative ${
-                      item.state ? 'bg-cyan-500' : 'bg-slate-300 dark:bg-slate-700'
-                    }`}
-                  >
-                    <span
-                      className={`block w-4 h-4 rounded-full bg-white transition-transform transform ${
-                        item.state ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                      Critical Tech Radar (High-Importance Pacing)
+                    </h3>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs">
+                      Spam-shielded: Normal noise and repetitive updates are completely suppressed.
+                    </p>
+                  </div>
                 </div>
-              ))}
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-full text-[10px] font-mono font-bold bg-rose-500/15 text-rose-600 dark:text-rose-300 border border-rose-500/30 inline-flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                    Critical-Only Active
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                To prevent notification overload, real-time alerts only fire when <strong>monumental events occur in the tech world</strong>:
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs">
+                <div className="p-3 rounded-xl bg-white/70 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
+                  <span className="font-bold text-slate-900 dark:text-white block text-xs">Zero-Day & Critical CVEs</span>
+                  <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-1 leading-snug">
+                    Actively exploited remote code execution or global cloud infrastructure failures.
+                  </p>
+                </div>
+                <div className="p-3 rounded-xl bg-white/70 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
+                  <span className="font-bold text-slate-900 dark:text-white block text-xs">Frontier Breakthroughs</span>
+                  <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-1 leading-snug">
+                    Generational foundation models (e.g., GPT-5), quantum supremacy, and new paradigms.
+                  </p>
+                </div>
+                <div className="p-3 rounded-xl bg-white/70 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
+                  <span className="font-bold text-slate-900 dark:text-white block text-xs">Breakout Surges (&gt;150%)</span>
+                  <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-1 leading-snug">
+                    Unprecedented developer velocity across 12,000+ mentions or 120%+ watchlist spikes.
+                  </p>
+                </div>
+              </div>
+
+              {/* Pacing Rules Badge */}
+              <div className="pt-2 flex flex-wrap items-center gap-2 text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                  ⚡ 15-Minute Scan Cycle
+                </span>
+                <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                  ⏱️ 30-Minute Cooldown
+                </span>
+                <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                  🎯 Max 1 Signal / Batch
+                </span>
+              </div>
             </div>
 
-            <div className="pt-4 flex justify-end">
-              <button
-                onClick={handleSave}
-                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-500 shadow-sm"
-              >
-                Save Notification Rules
-              </button>
+            {/* Notification Preferences Card */}
+            <div className="p-6 rounded-2xl bg-white dark:bg-[#0f1629] border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-6">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Channel Controls</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Customize which dispatches and alerts can notify your devices.
+                </p>
+              </div>
+
+              <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                {[
+                  {
+                    title: 'Real-Time Critical Tech Radar Alerts',
+                    desc: 'Instant in-app alerts and browser popups for critical zero-days and frontier breakthroughs.',
+                    state: trendAlerts,
+                    setState: setTrendAlerts,
+                  },
+                  {
+                    title: 'Scheduled Intelligence Digest',
+                    desc: 'Curated morning briefing sent directly to your registered email address.',
+                    state: emailDigest,
+                    setState: setEmailDigest,
+                  },
+                  {
+                    title: 'Watchlist High-Velocity Alerts',
+                    desc: 'Alerts if followed technologies in your watchlist surge past +120% growth.',
+                    state: watchlistAlerts,
+                    setState: setWatchlistAlerts,
+                  },
+                  {
+                    title: 'Academic Research Preprints',
+                    desc: 'Summary alerts for trending arXiv preprints in your selected technology interests.',
+                    state: researchUpdates,
+                    setState: setResearchUpdates,
+                  },
+                ].map((item, idx) => (
+                  <div key={idx} className="py-3.5 flex items-center justify-between gap-4">
+                    <div>
+                      <span className="font-bold text-slate-900 dark:text-white block">{item.title}</span>
+                      <span className="text-slate-400 text-[11px]">{item.desc}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => item.setState(!item.state)}
+                      className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${
+                        item.state ? 'bg-cyan-500' : 'bg-slate-300 dark:bg-slate-700'
+                      }`}
+                      aria-label={`Toggle ${item.title}`}
+                    >
+                      <span
+                        className={`block w-4 h-4 rounded-full bg-white transition-transform transform ${
+                          item.state ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Quiet Hours Section */}
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                <div className="flex items-center gap-2">
+                  <VolumeX className="w-4 h-4 text-cyan-500" />
+                  <span className="font-bold text-xs text-slate-900 dark:text-white">Quiet Hours Suppression</span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  During quiet hours, audio chimes and native desktop notifications are automatically silenced.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                      Start Time (Mute)
+                    </label>
+                    <input
+                      type="time"
+                      value={quietHoursStart}
+                      onChange={(e) => setQuietHoursStart(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                      End Time (Resume)
+                    </label>
+                    <input
+                      type="time"
+                      value={quietHoursEnd}
+                      onChange={(e) => setQuietHoursEnd(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-4 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
+                {saved ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-500">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Notification rules updated & synced
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-slate-400">Changes apply immediately across all sessions.</span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-500 shadow-sm transition"
+                >
+                  Save Notification Rules
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -426,7 +628,7 @@ export default function SettingsPage() {
                       Admin Role Transition Authority
                     </span>
                     <span className="text-[11px] text-slate-400">
-                      Switching roles will log out your active session and redirect you to the login page for security re-authentication.
+                      Switching roles immediately updates your platform authority between Administrator and Normal User mode.
                     </span>
                   </div>
                   <button
@@ -434,11 +636,11 @@ export default function SettingsPage() {
                     onClick={() => {
                       const targetRole = currentUser.role === 'admin' ? 'user' : 'admin';
                       const success = switchRole(targetRole);
-                      if (success) {
-                        router.push(`/signin?switched=true&role=${targetRole}`);
+                      if (success && targetRole === 'admin') {
+                        router.push('/admin');
                       }
                     }}
-                    className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 transition whitespace-nowrap"
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 transition whitespace-nowrap cursor-pointer"
                   >
                     {currentUser.role === 'admin' ? 'Switch to Normal User' : 'Switch to Administrator'}
                   </button>
@@ -694,6 +896,45 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+
+        {/* Danger Zone: Permanent Account Deletion */}
+        <div className="p-6 rounded-2xl bg-white dark:bg-[#0f1629] border border-red-500/30 dark:border-red-500/20 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 shrink-0 mt-0.5">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-bold text-sm text-slate-900 dark:text-white">
+                    Danger Zone: Permanent Account Deletion
+                  </h4>
+                  <span className="text-[10px] font-mono font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">
+                    Irreversible
+                  </span>
+                </div>
+                <p className="text-slate-500 dark:text-slate-400 text-xs mt-1 leading-relaxed">
+                  Permanently erase your account, access credentials, monitored watchlist, saved dossiers, and briefing schedules. Requires verification phrase confirmation.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsDeleteModalOpen(true)}
+              className="px-4 py-2.5 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-xs font-bold text-red-500 transition flex items-center gap-2 self-start sm:self-auto shrink-0 shadow-sm"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Delete Account</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Modal */}
+        <DeleteAccountModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+        />
 
         {saved && (
           <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono font-bold flex items-center gap-2">

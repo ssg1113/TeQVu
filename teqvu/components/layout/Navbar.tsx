@@ -36,6 +36,7 @@ export function Navbar() {
     toggleTheme,
     setSearchOpen,
     currentUser,
+    isAuthenticated,
     bookmarkedIds,
     watchlistIds,
     switchRole,
@@ -134,7 +135,7 @@ export function Navbar() {
                 aria-label="Notifications"
               >
                 <Bell className="w-4 h-4" />
-                {mounted && notifications.filter((n) => !n.isRead).length > 0 && (
+                {mounted && isAuthenticated && notifications.filter((n) => !n.isRead).length > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-cyan-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-[#0a0f1e] shadow-sm animate-pulse">
                     {notifications.filter((n) => !n.isRead).length > 9 ? '9+' : notifications.filter((n) => !n.isRead).length}
                   </span>
@@ -146,14 +147,14 @@ export function Navbar() {
                   <div className="flex items-center justify-between p-3.5 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/60">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-slate-900 dark:text-white text-xs">Live Technology Signals</span>
-                      {mounted && notifications.filter((n) => !n.isRead).length > 0 && (
+                      {mounted && isAuthenticated && notifications.filter((n) => !n.isRead).length > 0 && (
                         <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30">
                           {notifications.filter((n) => !n.isRead).length} new
                         </span>
                       )}
                     </div>
                     <div className="flex items-center gap-2.5">
-                      {mounted && notifications.filter((n) => !n.isRead).length > 0 && (
+                      {mounted && isAuthenticated && notifications.filter((n) => !n.isRead).length > 0 && (
                         <button
                           onClick={() => markAllAsRead()}
                           className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-cyan-500 dark:hover:text-cyan-400 transition flex items-center gap-1 font-medium"
@@ -163,7 +164,7 @@ export function Navbar() {
                           <span>Mark read</span>
                         </button>
                       )}
-                      {mounted && notifications.length > 0 && (
+                      {mounted && isAuthenticated && notifications.length > 0 && (
                         <button
                           onClick={() => clearNotifications()}
                           className="text-[11px] text-slate-400 hover:text-rose-500 transition flex items-center gap-1 font-medium"
@@ -177,7 +178,28 @@ export function Navbar() {
                   </div>
 
                   <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
-                    {!mounted || notifications.length === 0 ? (
+                    {!isAuthenticated ? (
+                      <div className="py-8 px-4 text-center space-y-3">
+                        <div className="w-10 h-10 rounded-full bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto">
+                          <Bell className="w-5 h-5 text-cyan-400" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
+                            Sign In for Live Signals
+                          </p>
+                          <p className="mt-1 text-slate-400 text-[11px] max-w-[240px] mx-auto leading-relaxed">
+                            Sign in to get real-time alerts, technology radar updates, and personalized intelligence notifications.
+                          </p>
+                        </div>
+                        <Link
+                          href="/signin?notice=auth_required"
+                          onClick={() => setNotificationsOpen(false)}
+                          className="inline-block px-4 py-2 rounded-xl text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-500 transition shadow-sm"
+                        >
+                          Sign In
+                        </Link>
+                      </div>
+                    ) : !mounted || notifications.length === 0 ? (
                       <div className="py-8 px-4 text-center">
                         <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800/60 text-slate-400 flex items-center justify-center mx-auto mb-2.5">
                           <Bell className="w-5 h-5 text-slate-400 opacity-60" />
@@ -325,107 +347,130 @@ export function Navbar() {
               {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
             </button>
 
-            {/* User Profile Avatar with Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="flex items-center gap-2 p-1 pl-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/60 transition border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
-              >
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ${
-                  mounted && currentUser.role === 'admin'
-                    ? 'bg-gradient-to-tr from-purple-600 to-pink-500 ring-purple-500/40'
-                    : 'bg-gradient-to-tr from-cyan-500 to-purple-600 ring-cyan-500/30'
-                }`}>
-                  {mounted ? (currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U') : 'U'}
-                </div>
-                <div className="hidden xl:flex flex-col text-left">
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 line-clamp-1">
-                    {mounted ? (currentUser.name ? currentUser.name.split(' ')[0] : 'User') : 'User'}
-                  </span>
-                  <span className="text-[9px] font-mono text-cyan-500 -mt-0.5 capitalize">
-                    {mounted ? currentUser.role : 'user'}
-                  </span>
-                </div>
-              </button>
+            {/* User Profile Avatar with Dropdown OR Sign In / Register Buttons */}
+            {mounted && !isAuthenticated ? (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/signin"
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/signup"
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 shadow-sm shadow-cyan-500/20 transition"
+                >
+                  Get Started
+                </Link>
+              </div>
+            ) : (
+              <div className="relative">
+                <button
+                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                  className="flex items-center gap-2 p-1 pl-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/60 transition border border-transparent hover:border-slate-200 dark:border-slate-700"
+                >
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ${
+                    mounted && currentUser.role === 'admin'
+                      ? 'bg-gradient-to-tr from-purple-600 to-pink-500 ring-purple-500/40'
+                      : 'bg-gradient-to-tr from-cyan-500 to-purple-600 ring-cyan-500/30'
+                  }`}>
+                    {mounted ? (currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U') : 'U'}
+                  </div>
+                  <div className="hidden xl:flex flex-col text-left">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 line-clamp-1">
+                      {mounted ? (currentUser.name ? currentUser.name.split(' ')[0] : 'User') : 'User'}
+                    </span>
+                    <span className="text-[9px] font-mono text-cyan-500 -mt-0.5 capitalize">
+                      {mounted ? currentUser.role : 'user'}
+                    </span>
+                  </div>
+                </button>
 
-              {/* Dropdown Menu */}
-              {profileDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white dark:bg-[#0f1629] border border-slate-200 dark:border-slate-800 shadow-2xl p-3 text-xs z-50 animate-slide-up space-y-2">
-                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
-                    <div className="font-bold text-slate-900 dark:text-white">{currentUser.name}</div>
-                    <div className="text-[11px] text-slate-400">{currentUser.email}</div>
-                    <div className="mt-1 flex items-center gap-1.5">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold capitalize ${
-                        currentUser.role === 'admin'
-                          ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
-                          : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
-                      }`}>
-                        {currentUser.role} Account
-                      </span>
+                {/* Dropdown Menu */}
+                {profileDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white dark:bg-[#0f1629] border border-slate-200 dark:border-slate-800 shadow-2xl p-3 text-xs z-50 animate-slide-up space-y-2">
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                      <div className="font-bold text-slate-900 dark:text-white">{currentUser.name || 'User'}</div>
+                      <div className="text-[11px] text-slate-400">{currentUser.email}</div>
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold capitalize ${
+                          currentUser.role === 'admin'
+                            ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
+                            : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
+                        }`}>
+                          {currentUser.role} Account
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Link
+                        href="/profile"
+                        onClick={() => setProfileDropdownOpen(false)}
+                        className="flex items-center gap-2 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                      >
+                        <User className="w-4 h-4 text-cyan-400" />
+                        <span>Edit Profile</span>
+                      </Link>
+
+                      {currentUser.role === 'admin' && (
+                        <Link
+                          href="/admin"
+                          onClick={() => setProfileDropdownOpen(false)}
+                          className="flex items-center gap-2 p-2 rounded-xl hover:bg-purple-500/10 text-purple-400 font-semibold"
+                        >
+                          <Shield className="w-4 h-4" />
+                          <span>Admin Dashboard</span>
+                        </Link>
+                      )}
+
+                      {/* Role Switcher: seamlessly toggles without logging out */}
+                      {canSwitchRole(currentUser.email, currentUser.role, adminEmails) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const targetRole = currentUser.role === 'admin' ? 'user' : 'admin';
+                            const success = switchRole(targetRole);
+                            setProfileDropdownOpen(false);
+                            if (success) {
+                              if (targetRole === 'admin') {
+                                router.push('/admin');
+                              } else if (pathname === '/admin') {
+                                router.push('/home');
+                              }
+                            }
+                          }}
+                          className="w-full text-left flex items-center justify-between p-2 rounded-xl hover:bg-purple-500/10 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-purple-400" />
+                            <span>Switch Role:</span>
+                          </span>
+                          <strong className="text-purple-400 font-mono capitalize">
+                            {currentUser.role === 'admin' ? 'Normal User' : 'Admin'}
+                          </strong>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setProfileDropdownOpen(false);
+                          await logout();
+                          router.push('/signin?notice=signed_out');
+                        }}
+                        className="w-full text-left flex items-center gap-2 p-2 rounded-xl hover:bg-red-500/10 text-red-400 transition cursor-pointer"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Sign Out</span>
+                      </button>
                     </div>
                   </div>
-
-                  <div className="space-y-1">
-                    <Link
-                      href="/profile"
-                      onClick={() => setProfileDropdownOpen(false)}
-                      className="flex items-center gap-2 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
-                    >
-                      <User className="w-4 h-4 text-cyan-400" />
-                      <span>Edit Profile</span>
-                    </Link>
-
-                    {currentUser.role === 'admin' && (
-                      <Link
-                        href="/admin"
-                        onClick={() => setProfileDropdownOpen(false)}
-                        className="flex items-center gap-2 p-2 rounded-xl hover:bg-purple-500/10 text-purple-400 font-semibold"
-                      >
-                        <Shield className="w-4 h-4" />
-                        <span>Admin Dashboard</span>
-                      </Link>
-                    )}
-
-                    {/* Role Switcher: STRICTLY restricted to authorized Administrator account */}
-                    {canSwitchRole(currentUser.email, currentUser.role, adminEmails) && (
-                      <button
-                        onClick={() => {
-                          const targetRole = currentUser.role === 'admin' ? 'user' : 'admin';
-                          const success = switchRole(targetRole);
-                          setProfileDropdownOpen(false);
-                          if (success) {
-                            router.push(`/signin?switched=true&role=${targetRole}`);
-                          }
-                        }}
-                        className="w-full text-left flex items-center justify-between p-2 rounded-xl hover:bg-purple-500/10 text-slate-600 dark:text-slate-300 transition"
-                      >
-                        <span className="flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-purple-400" />
-                          <span>Switch Role:</span>
-                        </span>
-                        <strong className="text-purple-400 font-mono capitalize">
-                          {currentUser.role === 'admin' ? 'Normal User' : 'Admin'}
-                        </strong>
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <Link
-                      href="/signin"
-                      onClick={() => {
-                        logout();
-                        setProfileDropdownOpen(false);
-                      }}
-                      className="flex items-center gap-2 p-2 rounded-xl hover:bg-red-500/10 text-red-400"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span>Sign Out</span>
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
             {/* Mobile Hamburger */}
             <button
@@ -452,15 +497,33 @@ export function Navbar() {
             </Link>
           ))}
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-400">
-            <Link href="/bookmarks" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-1.5">
-              <Bookmark className="w-4 h-4 text-cyan-400" />
-              <span>Bookmarks ({bookmarkedIds.length})</span>
-            </Link>
-            {currentUser.role === 'admin' && (
-              <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-1.5 text-purple-400">
-                <Shield className="w-4 h-4" />
-                <span>Admin Console</span>
-              </Link>
+            {isAuthenticated ? (
+              <>
+                <Link href="/bookmarks" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-1.5">
+                  <Bookmark className="w-4 h-4 text-cyan-400" />
+                  <span>Bookmarks ({bookmarkedIds.length})</span>
+                </Link>
+                {currentUser.role === 'admin' ? (
+                  <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-1.5 text-purple-400">
+                    <Shield className="w-4 h-4" />
+                    <span>Admin Console</span>
+                  </Link>
+                ) : (
+                  <Link href="/profile" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-1.5 text-slate-300">
+                    <User className="w-4 h-4 text-cyan-400" />
+                    <span>Profile</span>
+                  </Link>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center justify-between w-full">
+                <Link href="/signin" onClick={() => setMobileMenuOpen(false)} className="font-semibold text-slate-700 dark:text-slate-200 hover:text-cyan-400">
+                  Sign In
+                </Link>
+                <Link href="/signup" onClick={() => setMobileMenuOpen(false)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-500">
+                  Get Started
+                </Link>
+              </div>
             )}
           </div>
         </div>

@@ -244,12 +244,22 @@ export interface StoryCluster {
   primarySource: Source;
 }
 
+export type Occupation =
+  | 'Student'
+  | 'Software Engineer'
+  | 'Researcher'
+  | 'Academic'
+  | 'IT Professional'
+  | 'Platform Administrator'
+  | 'Other'
+  | '';
+
 export interface UserProfile {
   id: string;
   name: string;
   email: string;
   avatarUrl?: string;
-  occupation: 'Student' | 'Software Engineer' | 'Researcher' | 'Academic' | 'IT Professional' | 'Other';
+  occupation: Occupation;
   interests: string[];
   followedTechs: string[];
   role: 'user' | 'admin';

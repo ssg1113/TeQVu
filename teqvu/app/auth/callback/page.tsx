@@ -59,8 +59,28 @@ export default function AuthCallbackPage() {
              user.user_metadata?.name ||
              user.user_metadata?.user_name ||
              email.split('@')[0]);
+        const authIntent = typeof window !== 'undefined' ? sessionStorage.getItem('auth_flow_intent') : null;
+        if (typeof window !== 'undefined') sessionStorage.removeItem('auth_flow_intent');
+
+        // If the user arrived from the sign-up page but an account with this email already exists,
+        // prevent duplicate account creation and guide them to sign in
+        const isRegistered = useAppStore.getState().isEmailRegistered(email);
+        const createdAt = user.created_at ? new Date(user.created_at).getTime() : 0;
+        const isOldAccount = createdAt > 0 && (Date.now() - createdAt > 15000);
+
+        if (authIntent === 'signup' && (isRegistered || isOldAccount)) {
+          setStatus('This account is already registered. Redirecting to sign in...');
+          setTimeout(() => {
+            router.push(`/signin?email=${encodeURIComponent(email)}&notice=already_registered`);
+          }, 800);
+          return true;
+        }
+
         const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture;
-        const role = isAdmin ? 'admin' : 'user';
+        const oauthRole = typeof window !== 'undefined' ? sessionStorage.getItem('preferred_oauth_role') : null;
+        if (typeof window !== 'undefined') sessionStorage.removeItem('preferred_oauth_role');
+        const rolePref = (oauthRole === 'user' || oauthRole === 'admin') ? oauthRole : useAppStore.getState().adminRolePreference;
+        const role: 'user' | 'admin' = isAdmin ? (rolePref || 'admin') : 'user';
         const provider = (user.app_metadata?.provider || 'google') as 'google' | 'github';
         const hasPassword = Boolean(user.user_metadata?.has_password);
 
