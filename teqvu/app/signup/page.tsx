@@ -3,10 +3,11 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Github, Mail, Lock, User, Briefcase, AlertCircle, Loader2 } from 'lucide-react';
+import { ArrowRight, Github, Mail, Lock, User, Briefcase, AlertCircle, Loader2, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { Logo } from '../../components/ui/Logo';
 import { signInWithGoogle, signInWithGitHub, signUpWithEmail, isSupabaseConfigured } from '../../lib/supabase/client';
 import { useAppStore } from '../../lib/store/useAppStore';
+import { PasswordStrengthIndicator } from '../../components/ui/PasswordStrengthIndicator';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -14,6 +15,8 @@ export default function SignUpPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
   const [occupation, setOccupation] = useState('Software Engineer');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -25,6 +28,12 @@ export default function SignUpPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+
+    if (!isPasswordValid) {
+      setErrorMsg('Please choose a password that satisfies all security requirements.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -34,7 +43,8 @@ export default function SignUpPage() {
         return;
       }
 
-      const role = email.toLowerCase().includes('admin') ? 'admin' : 'user';
+      // All regular registrations are strictly regular 'user' accounts
+      const role: 'user' = 'user';
       const { data, error } = await signUpWithEmail(email, password, {
         name,
         occupation,
@@ -217,19 +227,33 @@ export default function SignUpPage() {
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Password</label>
+            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              Account Password
+            </label>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Minimum 8 characters"
+                placeholder="Enter a secure password"
                 required
-                minLength={8}
-                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-cyan-500"
+                className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-cyan-500"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
+            {/* Real-time strength meter */}
+            <PasswordStrengthIndicator
+              password={password}
+              userEmail={email}
+              onValidationChange={setIsPasswordValid}
+            />
           </div>
 
           <div>
@@ -254,13 +278,14 @@ export default function SignUpPage() {
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-purple-600 hover:opacity-90 shadow-md shadow-cyan-500/20 transition disabled:opacity-50"
+            disabled={loading || (password.length > 0 && !isPasswordValid)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-purple-600 hover:opacity-90 shadow-md shadow-cyan-500/20 transition disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <>
+                <ShieldCheck className="w-4 h-4" />
                 <span>Create Account & Setup Profile</span>
                 <ArrowRight className="w-4 h-4" />
               </>

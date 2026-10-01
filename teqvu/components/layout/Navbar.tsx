@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Search,
   Sun,
@@ -26,9 +26,11 @@ import {
 import { useAppStore } from '../../lib/store/useAppStore';
 import { Logo } from '../ui/Logo';
 import { timeAgo } from '../../lib/utils';
+import { canSwitchRole } from '../../lib/security/admin';
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const {
     isDark,
     toggleTheme,
@@ -38,6 +40,7 @@ export function Navbar() {
     watchlistIds,
     switchRole,
     logout,
+    adminEmails,
     notifications,
     markAsRead,
     markAllAsRead,
@@ -383,22 +386,28 @@ export function Navbar() {
                       </Link>
                     )}
 
-                    {/* Quick Role Switcher for Testing */}
-                    <button
-                      onClick={() => {
-                        switchRole(currentUser.role === 'admin' ? 'user' : 'admin');
-                        setProfileDropdownOpen(false);
-                      }}
-                      className="w-full text-left flex items-center justify-between p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-amber-400" />
-                        <span>Switch Role to:</span>
-                      </span>
-                      <strong className="text-cyan-400 font-mono capitalize">
-                        {currentUser.role === 'admin' ? 'Normal User' : 'Admin'}
-                      </strong>
-                    </button>
+                    {/* Role Switcher: STRICTLY restricted to authorized Administrator account */}
+                    {canSwitchRole(currentUser.email, currentUser.role, adminEmails) && (
+                      <button
+                        onClick={() => {
+                          const targetRole = currentUser.role === 'admin' ? 'user' : 'admin';
+                          const success = switchRole(targetRole);
+                          setProfileDropdownOpen(false);
+                          if (success) {
+                            router.push(`/signin?switched=true&role=${targetRole}`);
+                          }
+                        }}
+                        className="w-full text-left flex items-center justify-between p-2 rounded-xl hover:bg-purple-500/10 text-slate-600 dark:text-slate-300 transition"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-purple-400" />
+                          <span>Switch Role:</span>
+                        </span>
+                        <strong className="text-purple-400 font-mono capitalize">
+                          {currentUser.role === 'admin' ? 'Normal User' : 'Admin'}
+                        </strong>
+                      </button>
+                    )}
                   </div>
 
                   <div className="pt-2 border-t border-slate-100 dark:border-slate-800">

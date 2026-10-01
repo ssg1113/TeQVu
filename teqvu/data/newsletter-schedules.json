@@ -3,7 +3,7 @@
     "id": "default",
     "email": "sgdesilva1113@gmail.com",
     "frequency": "daily",
-    "deliveryTime": "09:00",
+    "deliveryTime": "19:05",
     "deliveryDayOfWeek": 1,
     "deliveryDayOfMonth": 1,
     "categories": [
@@ -19,10 +19,11 @@
       "Quantum Computing"
     ],
     "enabled": true,
+    "timezone": "Asia/Colombo",
     "lastSentAt": "2026-09-30T05:36:02.156Z",
     "lastSentCadence": "monthly",
     "createdAt": "2026-09-30T04:07:32.903Z",
-    "updatedAt": "2026-09-30T05:57:33.882Z"
+    "updatedAt": "2026-09-30T13:32:43.765Z"
   },
   "logs": [
     {

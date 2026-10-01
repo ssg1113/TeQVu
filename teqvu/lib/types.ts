@@ -255,6 +255,10 @@ export interface UserProfile {
   role: 'user' | 'admin';
   joinedAt: string;
   newsletterPreference: NewsletterPreference;
+  hasPassword?: boolean;
+  authProviders?: ('google' | 'github' | 'email')[];
+  passwordUpdatedAt?: string;
+  twoFactorEnabled?: boolean;
 }
 
 export interface AdminStats {
@@ -279,7 +283,7 @@ export interface ProcessingJob {
   details?: string;
 }
 
-export type NotificationType = 'trend' | 'update' | 'breaking' | 'watchlist';
+export type NotificationType = 'trend' | 'update' | 'breaking' | 'watchlist' | 'system';
 
 export interface AppNotification {
   id: string;

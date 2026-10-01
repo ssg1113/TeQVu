@@ -6,10 +6,11 @@ import Link from 'next/link';
 import { Compass, Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../../lib/supabase/client';
 import { useAppStore } from '../../../lib/store/useAppStore';
+import { isAdminAccount, ADMIN_NAME } from '../../../lib/security/admin';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const { login, updateUser } = useAppStore();
+  const { login, updateUser, adminEmails } = useAppStore();
   const [status, setStatus] = useState('Verifying authentication...');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -51,21 +52,36 @@ export default function AuthCallbackPage() {
         if (!session?.user || !isMounted) return false;
         const user = session.user;
         const email = user.email || '';
-        const name =
-          user.user_metadata?.full_name ||
-          user.user_metadata?.name ||
-          user.user_metadata?.user_name ||
-          email.split('@')[0];
+        const isAdmin = isAdminAccount(email, adminEmails);
+        const name = isAdmin
+          ? ADMIN_NAME
+          : (user.user_metadata?.full_name ||
+             user.user_metadata?.name ||
+             user.user_metadata?.user_name ||
+             email.split('@')[0]);
         const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture;
-        const role = email.toLowerCase().includes('admin') ? 'admin' : 'user';
+        const role = isAdmin ? 'admin' : 'user';
+        const provider = (user.app_metadata?.provider || 'google') as 'google' | 'github';
+        const hasPassword = Boolean(user.user_metadata?.has_password);
 
-        login(email, role, name);
+        login(email, role, name, provider, hasPassword);
 
         if (avatarUrl || user.id) {
           updateUser({
             id: user.id,
+            hasPassword,
             ...(avatarUrl ? { avatarUrl } : {}),
           });
+        }
+
+        // If the user authenticated via OAuth and hasn't established a validated password yet,
+        // redirect to set-password to enforce unified account credentials
+        if (!hasPassword) {
+          setStatus('Account authenticated! Directing to set your validated password...');
+          setTimeout(() => {
+            router.push(`/auth/set-password?provider=${provider}&email=${encodeURIComponent(email)}`);
+          }, 600);
+          return true;
         }
 
         setStatus('Authentication successful! Redirecting...');

@@ -85,8 +85,62 @@ export async function signUpWithEmail(
     email,
     password,
     options: {
-      data: metadata,
+      data: {
+        ...metadata,
+        has_password: true,
+        password_updated_at: new Date().toISOString(),
+      },
       emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
     },
   });
 }
+
+/**
+ * Request Password Reset Email
+ */
+export async function resetPasswordForEmail(email: string) {
+  if (!supabase) {
+    return { data: null, error: new Error('Supabase not configured') };
+  }
+
+  const redirectTo =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/reset-password`
+      : undefined;
+
+  return await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  });
+}
+
+/**
+ * Update authenticated user's password & metadata
+ */
+export async function updateUserPassword(
+  newPassword: string,
+  additionalMetadata?: Record<string, any>
+) {
+  if (!supabase) {
+    return { data: null, error: new Error('Supabase not configured') };
+  }
+
+  return await supabase.auth.updateUser({
+    password: newPassword,
+    data: {
+      has_password: true,
+      password_updated_at: new Date().toISOString(),
+      ...additionalMetadata,
+    },
+  });
+}
+
+/**
+ * Sign out user
+ */
+export async function signOut() {
+  if (!supabase) {
+    return { error: null };
+  }
+  return await supabase.auth.signOut();
+}
+

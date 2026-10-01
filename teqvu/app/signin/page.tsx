@@ -1,22 +1,56 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { ArrowRight, Github, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import {
+  ArrowRight,
+  Github,
+  Mail,
+  Lock,
+  AlertCircle,
+  Loader2,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+  Sparkles,
+} from 'lucide-react';
 import { Logo } from '../../components/ui/Logo';
-import { signInWithGoogle, signInWithGitHub, signInWithEmail, isSupabaseConfigured } from '../../lib/supabase/client';
+import {
+  signInWithGoogle,
+  signInWithGitHub,
+  signInWithEmail,
+  isSupabaseConfigured,
+} from '../../lib/supabase/client';
 import { useAppStore } from '../../lib/store/useAppStore';
+import {
+  PRIMARY_ADMIN_EMAIL,
+  isAdminAccount,
+} from '../../lib/security/admin';
 
-export default function SignInPage() {
+function SignInContent() {
   const router = useRouter();
-  const { login } = useAppStore();
-  const [email, setEmail] = useState('');
+  const searchParams = useSearchParams();
+  const { login, adminEmails } = useAppStore();
+
+  const switchedParam = searchParams.get('switched') === 'true';
+  const roleParam = searchParams.get('role');
+  const noticeParam = searchParams.get('notice');
+  const initialEmail = searchParams.get('email') || '';
+
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [githubLoading, setGithubLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialEmail && !email) {
+      setEmail(initialEmail);
+    }
+  }, [initialEmail, email]);
 
   // Email/Password Login
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,7 +60,9 @@ export default function SignInPage() {
 
     try {
       if (!isSupabaseConfigured) {
-        setErrorMsg('Supabase is not configured. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in .env.local.');
+        setErrorMsg(
+          'Supabase is not configured. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in .env.local.'
+        );
         setLoading(false);
         return;
       }
@@ -38,12 +74,17 @@ export default function SignInPage() {
         return;
       }
 
-      // Process login in store
+      // Process login in store with dynamic admin authority check
       const user = data?.user;
-      const name = user?.user_metadata?.full_name || user?.user_metadata?.name || email.split('@')[0];
-      const role = email.toLowerCase().includes('admin') ? 'admin' : 'user';
-      login(email, role, name);
-      router.push(role === 'admin' ? '/admin' : '/home');
+      const isAdmin = isAdminAccount(email, adminEmails);
+      const name =
+        user?.user_metadata?.full_name ||
+        user?.user_metadata?.name ||
+        email.split('@')[0];
+      const targetRole = isAdmin ? (roleParam === 'user' ? 'user' : 'admin') : 'user';
+
+      login(email, targetRole, name);
+      router.push(targetRole === 'admin' ? '/admin' : '/home');
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to sign in');
     } finally {
@@ -58,7 +99,7 @@ export default function SignInPage() {
 
     try {
       if (!isSupabaseConfigured) {
-        setErrorMsg('Supabase is not configured. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in .env.local.');
+        setErrorMsg('Supabase is not configured.');
         setGoogleLoading(false);
         return;
       }
@@ -68,7 +109,6 @@ export default function SignInPage() {
         setErrorMsg(error.message);
         setGoogleLoading(false);
       }
-      // Real redirect to Google login is automatically initiated by Supabase OAuth
     } catch (err: any) {
       setErrorMsg(err.message || 'Google authentication error');
       setGoogleLoading(false);
@@ -82,7 +122,7 @@ export default function SignInPage() {
 
     try {
       if (!isSupabaseConfigured) {
-        setErrorMsg('Supabase is not configured. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in .env.local.');
+        setErrorMsg('Supabase is not configured.');
         setGithubLoading(false);
         return;
       }
@@ -92,7 +132,6 @@ export default function SignInPage() {
         setErrorMsg(error.message);
         setGithubLoading(false);
       }
-      // Real redirect to GitHub login is automatically initiated by Supabase OAuth
     } catch (err: any) {
       setErrorMsg(err.message || 'GitHub authentication error');
       setGithubLoading(false);
@@ -112,6 +151,38 @@ export default function SignInPage() {
             Access your personalized intelligence feed & watchlist.
           </p>
         </div>
+
+        {/* Role Switch Redirection Banner */}
+        {switchedParam && (
+          <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/30 text-purple-400 text-xs flex items-start gap-2.5 font-medium animate-fade-in">
+            <Sparkles className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-slate-900 dark:text-white">Role Transition Active</p>
+              <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                You have switched to{' '}
+                <span className="font-bold text-purple-400 capitalize">
+                  {roleParam === 'admin' ? 'Administrator' : 'Normal User'}
+                </span>{' '}
+                mode. For security compliance, please sign in with your credentials.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Administrator Clearance Notice */}
+        {noticeParam === 'admin_required' && (
+          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs flex items-start gap-2.5 font-medium animate-fade-in">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-slate-900 dark:text-white">Admin Clearance Required</p>
+              <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                Only authorized administrator accounts (including primary administrator{' '}
+                <span className="font-mono text-purple-400">{PRIMARY_ADMIN_EMAIL}</span>) have access to the
+                Administrator Console. Please sign in below.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Error Alert */}
         {errorMsg && (
@@ -207,13 +278,20 @@ export default function SignInPage() {
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 required
-                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-cyan-500"
+                className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-cyan-500"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
@@ -241,5 +319,19 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-[#0a0f1e]">
+          <Loader2 className="w-6 h-6 animate-spin text-cyan-400" />
+        </div>
+      }
+    >
+      <SignInContent />
+    </Suspense>
   );
 }

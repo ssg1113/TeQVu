@@ -3,6 +3,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { UserProfile, NewsletterPreference, AppNotification } from '../types';
+import {
+  PRIMARY_ADMIN_EMAIL,
+  ADMIN_NAME,
+  isAdminAccount,
+  isPrimaryAdmin,
+  canSwitchRole,
+} from '../security/admin';
 
 interface AppState {
   // Auth state
@@ -10,10 +17,17 @@ interface AppState {
   currentUser: UserProfile;
   setAuthenticated: (val: boolean) => void;
   updateUser: (updates: Partial<UserProfile>) => void;
-  login: (email: string, role?: 'user' | 'admin', name?: string) => void;
+  login: (email: string, role?: 'user' | 'admin', name?: string, provider?: 'google' | 'github' | 'email', hasPassword?: boolean) => void;
   signup: (data: { name: string; email: string; occupation?: any; role?: 'user' | 'admin' }) => void;
-  switchRole: (role: 'user' | 'admin') => void;
+  setPasswordStatus: (hasPassword: boolean, updatedAt?: string) => void;
+  linkAuthProvider: (provider: 'google' | 'github' | 'email') => void;
+  switchRole: (role: 'user' | 'admin') => boolean;
   logout: () => void;
+
+  // Admin Governance & Delegation
+  adminEmails: string[];
+  assignAdmin: (email: string) => boolean;
+  revokeAdmin: (email: string) => boolean;
 
   // Bookmarks
   bookmarkedIds: string[];
@@ -86,6 +100,10 @@ const DEFAULT_USER: UserProfile = {
     scheduleEnabled: true,
     timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
   },
+  hasPassword: true,
+  authProviders: ['google', 'email'],
+  passwordUpdatedAt: '2025-01-10T12:00:00Z',
+  twoFactorEnabled: false,
 };
 
 export const useAppStore = create<AppState>()(
@@ -97,20 +115,71 @@ export const useAppStore = create<AppState>()(
       updateUser: (updates) =>
         set((state) => ({ currentUser: { ...state.currentUser, ...updates } })),
 
-      login: (email, role = 'user', name) => {
-        const isAdmin = role === 'admin' || email.toLowerCase().includes('admin');
+      adminEmails: [PRIMARY_ADMIN_EMAIL],
+
+      assignAdmin: (email: string) => {
+        const clean = (email || '').trim().toLowerCase();
+        if (!clean || !clean.includes('@')) return false;
+
+        const current = get().adminEmails.map((e) => e.trim().toLowerCase());
+        if (current.includes(clean)) return true;
+
+        const updated = [...get().adminEmails, clean];
+        set({ adminEmails: updated });
+
+        // If the currently logged in user is the one being assigned, update role
+        if (get().currentUser.email.trim().toLowerCase() === clean) {
+          set((state) => ({ currentUser: { ...state.currentUser, role: 'admin' } }));
+        }
+        return true;
+      },
+
+      revokeAdmin: (email: string) => {
+        const clean = (email || '').trim().toLowerCase();
+        // Never allow revoking the primary super admin
+        if (clean === PRIMARY_ADMIN_EMAIL.toLowerCase()) {
+          console.warn('Cannot revoke the primary administrator.');
+          return false;
+        }
+
+        const updated = get().adminEmails.filter((e) => e.trim().toLowerCase() !== clean);
+        set({ adminEmails: updated });
+
+        // If the currently logged in user was revoked, demote role to 'user'
+        if (get().currentUser.email.trim().toLowerCase() === clean) {
+          set((state) => ({ currentUser: { ...state.currentUser, role: 'user' } }));
+        }
+        return true;
+      },
+
+      login: (email, role, name, provider, hasPassword) => {
+        // Enforce: ONLY the primary admin (sgdesilva1113@gmail.com) or assigned admin accounts possess 'admin' status
+        const isAdmin = isAdminAccount(email, get().adminEmails);
+        const prevProviders = get().currentUser.authProviders || ['email'];
+        const updatedProviders = provider && !prevProviders.includes(provider)
+          ? [...prevProviders, provider]
+          : prevProviders;
+
+        // If the user is an admin account, respect explicit target role or default to 'admin'
+        // If they are NOT an admin account, role is ALWAYS strictly forced to 'user'
+        const effectiveRole: 'user' | 'admin' = isAdmin ? (role || 'admin') : 'user';
+
         set({
           isAuthenticated: true,
           currentUser: {
             ...get().currentUser,
             email,
-            name: name || (isAdmin ? 'Admin Operator' : email.split('@')[0]),
-            role: isAdmin ? 'admin' : 'user',
+            name: name || (isAdmin ? (isPrimaryAdmin(email) ? 'Platform Owner & Admin' : 'Admin Operator') : email.split('@')[0]),
+            role: effectiveRole,
+            hasPassword: hasPassword !== undefined ? hasPassword : (get().currentUser.hasPassword ?? true),
+            authProviders: updatedProviders,
           },
         });
       },
 
       signup: (data) => {
+        // Normal registrations are strictly regular 'user' accounts unless matching an admin email
+        const isAdmin = isAdminAccount(data.email, get().adminEmails);
         set({
           isAuthenticated: true,
           currentUser: {
@@ -119,21 +188,62 @@ export const useAppStore = create<AppState>()(
             name: data.name,
             email: data.email,
             occupation: data.occupation || 'Software Engineer',
-            role: data.role || (data.email.toLowerCase().includes('admin') ? 'admin' : 'user'),
+            role: isAdmin ? 'admin' : 'user',
             joinedAt: new Date().toISOString().split('T')[0],
+            hasPassword: true,
+            authProviders: ['email'],
+            passwordUpdatedAt: new Date().toISOString(),
           },
         });
       },
 
-      switchRole: (newRole) => {
+      setPasswordStatus: (hasPassword, updatedAt) => {
         set((state) => ({
           currentUser: {
             ...state.currentUser,
-            role: newRole,
-            name: newRole === 'admin' ? 'Admin Operator' : 'Alex Rivera',
-            email: newRole === 'admin' ? 'admin@teqvu.dev' : 'alex.rivera@techpulse.dev',
+            hasPassword,
+            passwordUpdatedAt: updatedAt || new Date().toISOString(),
           },
         }));
+      },
+
+      linkAuthProvider: (provider) => {
+        set((state) => {
+          const current = state.currentUser.authProviders || ['email'];
+          if (current.includes(provider)) return state;
+          return {
+            currentUser: {
+              ...state.currentUser,
+              authProviders: [...current, provider],
+            },
+          };
+        });
+      },
+
+      switchRole: (newRole) => {
+        const currentEmail = get().currentUser.email;
+        const currentRole = get().currentUser.role;
+        const adminList = get().adminEmails;
+
+        // ONLY authorized admins (sgdesilva1113@gmail.com or assigned admins) have authority to switch roles
+        if (!canSwitchRole(currentEmail, currentRole, adminList)) {
+          console.warn('Unauthorized role switch attempt blocked for user:', currentEmail);
+          return false;
+        }
+
+        // Switching roles must always require re-authentication (redirect to login)
+        set({
+          isAuthenticated: false,
+          currentUser: {
+            ...get().currentUser,
+            role: newRole,
+            email: currentEmail,
+            name: newRole === 'admin'
+              ? (isPrimaryAdmin(currentEmail) ? 'Platform Owner & Admin' : 'Admin Operator')
+              : get().currentUser.name,
+          },
+        });
+        return true;
       },
 
       logout: () => {
@@ -304,6 +414,7 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         isAuthenticated: state.isAuthenticated,
         currentUser: state.currentUser,
+        adminEmails: state.adminEmails,
         bookmarkedIds: state.bookmarkedIds,
         watchlistIds: state.watchlistIds,
         interests: state.interests,
