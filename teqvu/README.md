@@ -1,150 +1,270 @@
 # TeQVu
 
-# Technology Intelligence & Personalized Newsletter Platform
+**Technology Intelligence & Personalized Newsletter Platform**
 
-TeQVu is a technology intelligence platform designed to help IT students, developers, researchers, and technology professionals stay updated with emerging technologies, industry trends, research, and important technology news.
+TeQVu is a technology intelligence and personalized newsletter platform designed to help users discover emerging technology trends, industry news, research, and relevant insights in one place.
 
-The platform aims to collect technology-related information from trusted sources, organize and categorize content, identify emerging trends, and provide users with personalized insights and smart email updates based on their interests.
+The platform collects technology-related content from multiple sources, organizes it into useful categories, and helps users stay informed through personalized content discovery, automated aggregation, and newsletter features.
 
-# Key Features
+🌐 **Live Application:** https://teqvu.vercel.app/  
+💻 **Repository:** https://github.com/ssg1113/TeQVu
 
-- Technology news aggregation from multiple trusted sources
-- Emerging technology and trend discovery
-- Personalized technology news feed
-- Technology categories and topic-based filtering
-- Search and content discovery
-- Technology watchlists
-- Article bookmarking
-- Research and academic resource discovery
-- Technology and skill insights
-- Personalized newsletter preferences
-- Smart email alerts for important technology developments
-- Duplicate content and repeated-alert reduction
-- User authentication and profile management
-- Administrative source and content management
+---
 
-# Smart Newsletter System
+## 🚀 About the Project
 
-TeQVu is designed to avoid overwhelming users with unnecessary emails.
+Keeping up with rapidly changing technology can be difficult because useful information is distributed across news websites, blogs, research sources, and other platforms.
 
-Instead of sending every collected article, the platform evaluates content based on factors such as relevance, importance, user interests, and emerging technology trends. Regular updates can be included in scheduled digests, while significant developments can be delivered as priority alerts.
+TeQVu aims to simplify this process by providing a centralized platform where users can discover and follow important developments in technology.
 
-Users can customize their preferred technology categories, newsletter frequency, watchlists, and notification preferences.
+The platform focuses on:
 
-# Technology Intelligence
+- Emerging technology trends
+- Technology news and industry updates
+- Research and innovation
+- Personalized technology content
+- Automated content aggregation
+- Newsletter-based updates and alerts
 
-The platform aims to analyze technology information from multiple sources to identify technologies and topics receiving increasing attention.
+---
 
-Technology insights may include:
+## ✨ Key Features
 
-- Recent technology developments
-- Trending technologies
-- Related news and research
-- Technology popularity and activity
-- Related skills
-- Relevant job roles
-- Related tools and technologies
-- Useful learning and research resources
+### 📰 Technology News Aggregation
 
-# Research Hub
+Collects technology-related articles and updates from external sources and presents them through a centralized interface.
 
-The Research Hub is designed to provide a centralized location for exploring:
+### 🔍 Technology Trend Discovery
 
-- Technology news
-- Research papers
-- Emerging technologies
-- Open-source projects
-- Industry developments
-- Academic resources
-- Technology-related skills and career information
+Helps users explore emerging technologies, industry developments, and important technology topics.
 
-This feature is particularly intended to support students, researchers, and technology professionals conducting academic or career-related research.
+### 👤 Personalized Content
 
-# Planned Architecture
+Provides content based on user interests and selected technology categories.
 
-TeQVu follows a web-first architecture with the possibility of extending the same backend services to a mobile application in the future.
+### 📧 Personalized Newsletters
 
-The planned system includes:
+Supports newsletter functionality for delivering relevant technology updates and insights to users.
 
-- Web frontend
-- Backend API
-- Relational database
-- Technology source management
-- Content ingestion services
-- AI/NLP processing
-- Trend detection
-- Personalized recommendation services
-- Newsletter and alert services
-- Administrative dashboard
+### 🔄 Automated Content Collection
 
-# Technology Stack
+Scheduled backend processes can automatically retrieve and process new content without requiring manual updates.
 
-The project may use technologies such as:
+### 📡 RSS & External Content Integration
 
-**Frontend**
-- React / Next.js
+Supports integration with RSS feeds and external content sources to collect recently published technology articles and updates.
+
+### 🔐 User Authentication
+
+Provides authentication functionality for managing users and enabling personalized platform experiences.
+
+### 📱 Responsive User Interface
+
+Designed to work across desktop, tablet, and mobile screen sizes.
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend
+
+- React.js
 - TypeScript
 - Tailwind CSS
+- Vite
 
-**Backend**
+### Backend & APIs
+
 - Node.js
-- NestJS
-- REST APIs
+- REST API Integration
+- Serverless/API functions
 
-**Database**
+### Database & Authentication
+
+- Supabase
 - PostgreSQL
-- Prisma ORM
-- pgvector
+- Supabase Authentication
 
-**AI / Data Processing**
-- Python
-- FastAPI
-- NLP / Machine Learning
-- Sentence Transformers
+### Content & Automation
 
-**Other Tools**
-- Redis
-- BullMQ
-- Git & GitHub
-- Docker
+- RSS Feed Integration
+- External API Integration
+- Automated Content Aggregation
+- Scheduled/Cron Jobs
 
-> The technology stack may change as the project evolves.
+### Deployment & Development Tools
 
-## Project Status
+- Vercel
+- Git
+- GitHub
+- npm
+- VS Code
 
-🚧 **Currently Under Development**
+---
 
-TeQVu is being developed incrementally. Initial development focuses on the core web platform, content organization, technology discovery, user personalization, and newsletter functionality.
+## ⚙️ How TeQVu Works
 
-Advanced trend intelligence, AI-powered analysis, semantic search, research tools, and additional personalization features are planned for later development stages.
+A simplified content flow of the platform is:
 
-## Future Development
+```text
+Technology Sources
+        │
+        ▼
+RSS Feeds / External APIs
+        │
+        ▼
+Content Collection
+        │
+        ▼
+Content Processing
+        │
+        ▼
+Database
+        │
+        ├──────────────► Web Application
+        │
+        └──────────────► Personalized Newsletters
+```
 
-Future improvements may include:
+Scheduled processes can periodically check configured content sources for new technology articles and updates.
 
-- Advanced AI-powered technology trend detection
-- Semantic search
-- Personalized recommendations
-- Technology comparison tools
-- GitHub and research data integration
-- Career and skill intelligence
-- Custom newsletter generation
-- Company and technology tracking
-- Trend forecasting
-- Mobile application
+The collected information can then be processed, stored, categorized, and presented to users through the TeQVu interface.
 
-The mobile application is considered a future extension and is not part of the current primary development scope.
+---
 
-## Purpose
+## 📂 Project Structure
 
-The main goal of TeQVu is to provide a single platform where users can quickly understand what is happening in technology, discover emerging technologies, access useful research resources, and receive relevant updates without having to manually follow numerous technology websites and newsletters.
+The application source code is located inside the `teqvu` directory.
 
-## Author
+```text
+TeQVu/
+│
+├── teqvu/
+│   ├── src/
+│   ├── public/
+│   ├── package.json
+│   └── ...
+│
+├── README.md
+├── vercel.json
+└── ...
+```
 
-**S S Gayashan De Silva**
+The exact structure may evolve as new functionality is added to the platform.
 
-Information Technology Undergraduate
+---
 
-## License
+## 💻 Getting Started
 
-This project is currently being developed for educational and portfolio purposes.
+### Prerequisites
+
+Make sure the following are installed:
+
+- Node.js
+- npm
+- Git
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/ssg1113/TeQVu.git
+```
+
+### 2. Navigate to the application
+
+```bash
+cd TeQVu/teqvu
+```
+
+### 3. Install dependencies
+
+```bash
+npm install
+```
+
+### 4. Configure environment variables
+
+Create the required environment configuration for services used by the application, such as Supabase and external APIs.
+
+Do not commit API keys, database credentials, or other secrets to the repository.
+
+### 5. Start the development server
+
+```bash
+npm run dev
+```
+
+Open the local development URL displayed in the terminal.
+
+---
+
+## 🌐 Deployment
+
+TeQVu is deployed using Vercel.
+
+The production application is available at:
+
+**https://teqvu.vercel.app/**
+
+Vercel is also used for deployment-related serverless functionality and scheduled tasks where applicable.
+
+---
+
+## 🎯 Project Objectives
+
+The main objectives of TeQVu are to:
+
+- Provide a centralized source for technology-related information.
+- Help users discover emerging technologies and industry trends.
+- Reduce the need to manually search multiple technology websites.
+- Provide personalized technology content based on user interests.
+- Automate the collection of relevant technology information.
+- Deliver useful updates through personalized newsletters.
+- Create a scalable platform that can integrate additional technology information sources in the future.
+
+---
+
+## 🔮 Future Improvements
+
+Potential future improvements include:
+
+- AI-powered article summarization
+- Advanced technology trend detection
+- Improved recommendation algorithms
+- Research-paper discovery
+- More technology news and RSS sources
+- Advanced user preference management
+- Newsletter scheduling and customization
+- Trending-topic analytics
+- Saved articles and reading lists
+- Mobile application support
+- Smarter notification and alert systems
+
+---
+
+## 🎓 Project Type
+
+**Individual Software Project**
+
+TeQVu was developed as an individual project focused on full-stack web development, API integration, content aggregation, database management, authentication, automation, and modern web deployment.
+
+---
+
+## 👨‍💻 Developer
+
+**Sandeepa Gayashan De Silva**
+
+BSc (Hons) in Information Technology  
+University of Moratuwa
+
+GitHub: https://github.com/ssg1113
+
+---
+
+## 📄 License
+
+This project is currently intended for educational and portfolio purposes.
+
+---
+
+⭐ If you find TeQVu interesting, feel free to explore the repository and follow its future development.
