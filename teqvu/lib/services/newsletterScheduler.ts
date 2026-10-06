@@ -59,20 +59,31 @@ function getCurrentTimeInTimezone(tz?: string): { time: string; dayOfWeek: numbe
 /**
  * Check if a timestamp is from the same calendar day in the given timezone
  */
-function isSameDayInTimezone(isoString?: string | null, dateKey?: string): boolean {
+function isSameDayInTimezone(isoString?: string | null, dateKey?: string, tz?: string): boolean {
   if (!isoString) return false;
   const d = new Date(isoString);
+  try {
+    if (tz && dateKey) {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: tz,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(d);
+      const dayStr = parts.find((p) => p.type === 'day')?.value;
+      const monthStr = parts.find((p) => p.type === 'month')?.value;
+      const yearStr = parts.find((p) => p.type === 'year')?.value;
+      const sentDateKey = `${yearStr}-${monthStr}-${dayStr}`;
+      return sentDateKey === dateKey;
+    }
+  } catch {}
+
   const now = new Date();
-  // Fallback to UTC day check if no dateKey
-  if (!dateKey) {
-    return (
-      d.getUTCFullYear() === now.getUTCFullYear() &&
-      d.getUTCMonth() === now.getUTCMonth() &&
-      d.getUTCDate() === now.getUTCDate()
-    );
-  }
-  const isoDateKey = d.toISOString().split('T')[0];
-  return isoDateKey === dateKey;
+  return (
+    d.getUTCFullYear() === now.getUTCFullYear() &&
+    d.getUTCMonth() === now.getUTCMonth() &&
+    d.getUTCDate() === now.getUTCDate()
+  );
 }
 
 /**
@@ -91,10 +102,11 @@ function getMinutesDifference(current: string, target: string): number {
   return (cH * 60 + cM) - (tH * 60 + tM);
 }
 
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 /**
  * Evaluates active schedules and dispatches emails if the scheduled time has arrived.
- * Called by the Vercel cron job at /api/newsletter/cron (runs every hour in UTC).
- * Also callable manually from the schedule PUT endpoint.
+ * Called automatically by the background worker, by client heartbeats, and by cron jobs.
  */
 export async function runDueSchedulesCheck(): Promise<{
   checked: boolean;
@@ -102,6 +114,9 @@ export async function runDueSchedulesCheck(): Promise<{
   reason?: string;
   schedule?: any;
 }> {
+  // Ensure the live background scheduler engine is ticking
+  initScheduler();
+
   const schedule = await getStoredSchedule();
 
   if (!schedule || !schedule.enabled || schedule.frequency === 'disabled' || !schedule.email) {
@@ -114,31 +129,33 @@ export async function runDueSchedulesCheck(): Promise<{
   const currentDayOfMonth = tzInfo.dayOfMonth;
 
   const targetTime = schedule.deliveryTime || '08:00';
-
-  // Compare hours and minutes with a generous 60-minute window
-  // (cron fires every hour, so we use a 55-minute window to be safe)
   const diffMinutes = getMinutesDifference(currentTime, targetTime);
-  const isTimeMatch = diffMinutes >= 0 && diffMinutes <= 55;
+  const hasPassedTargetTime = diffMinutes >= 0;
 
   let isDue = false;
   let cadenceNote = '';
 
   if (schedule.frequency === 'daily') {
-    if (isTimeMatch && !isSameDayInTimezone(schedule.lastSentAt, tzInfo.dateKey)) {
+    const alreadySentToday = isSameDayInTimezone(schedule.lastSentAt, tzInfo.dateKey, schedule.timezone);
+    if (!alreadySentToday && hasPassedTargetTime) {
       isDue = true;
-      cadenceNote = 'Daily scheduled delivery time reached';
+      cadenceNote = `Daily automated briefing due (Target: ${targetTime}, Current: ${currentTime} in ${schedule.timezone || 'UTC'})`;
     }
   } else if (schedule.frequency === 'weekly') {
     const targetDayOfWeek = schedule.deliveryDayOfWeek ?? 1;
-    if (currentDayOfWeek === targetDayOfWeek && isTimeMatch && !wasSentWithinDays(schedule.lastSentAt, 6)) {
+    const isTargetDay = currentDayOfWeek === targetDayOfWeek;
+    const sentRecently = wasSentWithinDays(schedule.lastSentAt, 6);
+    if (isTargetDay && hasPassedTargetTime && !sentRecently) {
       isDue = true;
-      cadenceNote = 'Weekly scheduled delivery day and time reached';
+      cadenceNote = `Weekly automated briefing due on ${DAY_NAMES[targetDayOfWeek] || 'scheduled day'}`;
     }
   } else if (schedule.frequency === 'monthly') {
     const targetDayOfMonth = schedule.deliveryDayOfMonth ?? 1;
-    if (currentDayOfMonth === targetDayOfMonth && isTimeMatch && !wasSentWithinDays(schedule.lastSentAt, 25)) {
+    const isTargetDay = currentDayOfMonth === targetDayOfMonth;
+    const sentRecently = wasSentWithinDays(schedule.lastSentAt, 25);
+    if (isTargetDay && hasPassedTargetTime && !sentRecently) {
       isDue = true;
-      cadenceNote = 'Monthly scheduled delivery day and time reached';
+      cadenceNote = `Monthly automated briefing due on day ${targetDayOfMonth}`;
     }
   }
 
@@ -174,17 +191,42 @@ export async function runDueSchedulesCheck(): Promise<{
   return {
     checked: true,
     dispatched: false,
-    reason: `Not due (Current UTC: ${currentTime}, Target: ${targetTime}, Freq: ${schedule.frequency})`,
+    reason: `Schedule active but not due yet (Current: ${currentTime}, Target: ${targetTime}, Cadence: ${schedule.frequency}, Timezone: ${schedule.timezone || 'UTC'})`,
     schedule,
   };
 }
 
+let _schedulerInterval: NodeJS.Timeout | null = null;
+let _isInitializing = false;
+
 /**
- * No-op on Vercel: the cron job in vercel.json handles scheduling.
- * On local dev this is also unnecessary since the cron won't fire.
- * Kept for backward compatibility; callers may still invoke it safely.
+ * Initializes continuous background scheduling worker in Node.js runtime.
+ * Evaluates active delivery schedules continuously every 60 seconds.
  */
 export function initScheduler(): void {
-  // Intentionally empty — scheduling is handled by the Vercel cron job.
-  // setInterval does not survive serverless function termination.
+  if (typeof process === 'undefined') return;
+  if (_schedulerInterval || _isInitializing) return;
+
+  _isInitializing = true;
+
+  // Run initial check after 2 seconds
+  setTimeout(() => {
+    runDueSchedulesCheck().catch((err) =>
+      console.warn('[Scheduler] Startup check note:', err?.message)
+    );
+  }, 2000);
+
+  // Run continuous heartbeat check every 60 seconds
+  _schedulerInterval = setInterval(() => {
+    runDueSchedulesCheck().catch((err) =>
+      console.warn('[Scheduler] Interval check note:', err?.message)
+    );
+  }, 60 * 1000);
+
+  if (_schedulerInterval && typeof _schedulerInterval.unref === 'function') {
+    _schedulerInterval.unref();
+  }
+
+  _isInitializing = false;
+  console.log('[Scheduler] Live background auto-dispatch engine running.');
 }

@@ -3,22 +3,22 @@
     "id": "default",
     "email": "sgdesilva1113@gmail.com",
     "frequency": "daily",
-    "deliveryTime": "09:30",
+    "deliveryTime": "17:30",
     "deliveryDayOfWeek": 1,
     "deliveryDayOfMonth": 1,
     "categories": [
       "AI/ML",
       "Languages",
-      "Cloud",
+      "Cloud Computing",
       "Cybersecurity",
-      "DevOps"
+      "Software Engineering"
     ],
-    "enabled": false,
+    "enabled": true,
     "timezone": "Asia/Colombo",
-    "lastSentAt": "2026-09-30T05:36:02.156Z",
-    "lastSentCadence": "monthly",
+    "lastSentAt": "2026-10-06T11:41:40.837Z",
+    "lastSentCadence": "daily",
     "createdAt": "2026-09-30T04:07:32.903Z",
-    "updatedAt": "2026-10-06T02:58:22.926Z"
+    "updatedAt": "2026-10-06T11:46:40.958Z"
   },
   "logs": [
     {
@@ -140,6 +140,46 @@
       "status": "delivered",
       "mode": "resend",
       "messageId": "01a0f0d9-5551-7325-b2c6-c2fc69b51dc6"
+    },
+    {
+      "id": "log_1791285493578_nt4pi",
+      "timestamp": "2026-10-06T11:18:13.578Z",
+      "email": "sgdesilva1113@gmail.com",
+      "frequency": "daily",
+      "subject": "TeQVu Daily Brief — Oct 6: Real-Time Tech Intelligence",
+      "status": "delivered",
+      "mode": "resend",
+      "messageId": "01a110ef-8034-7c66-a64b-8810accb9fe6"
+    },
+    {
+      "id": "log_1791286404330_7krxh",
+      "timestamp": "2026-10-06T11:33:24.330Z",
+      "email": "sgdesilva1113@gmail.com",
+      "frequency": "daily",
+      "subject": "TeQVu Daily Brief — Oct 6: Real-Time Tech Intelligence",
+      "status": "delivered",
+      "mode": "resend",
+      "messageId": "01a110fd-65d1-72f4-afe6-46702a3e2872"
+    },
+    {
+      "id": "log_1791286560070_oxj2x",
+      "timestamp": "2026-10-06T11:36:00.070Z",
+      "email": "sgdesilva1113@gmail.com",
+      "frequency": "daily",
+      "subject": "TeQVu Daily Brief — Oct 6: Real-Time Tech Intelligence",
+      "status": "delivered",
+      "mode": "resend",
+      "messageId": "01a110ff-c637-7993-b227-22a83fe85011"
+    },
+    {
+      "id": "log_1791286900829_xxcxe",
+      "timestamp": "2026-10-06T11:41:40.829Z",
+      "email": "sgdesilva1113@gmail.com",
+      "frequency": "daily",
+      "subject": "TeQVu Daily Brief — Oct 6: Real-Time Tech Intelligence",
+      "status": "delivered",
+      "mode": "resend",
+      "messageId": "01a11104-f93f-705c-ab35-cd32a9923eb1"
     }
   ]
 }

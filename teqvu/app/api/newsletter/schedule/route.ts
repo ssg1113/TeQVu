@@ -4,13 +4,14 @@ import {
   updateStoredSchedule,
   getDeliveryLogs,
 } from '../../../../lib/services/newsletterScheduleStore';
-import { runDueSchedulesCheck } from '../../../../lib/services/newsletterScheduler';
+import { runDueSchedulesCheck, initScheduler } from '../../../../lib/services/newsletterScheduler';
 import { sendNewsletter } from '../../../../lib/services/newsletterMailer';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    initScheduler();
     const schedule = await getStoredSchedule();
     const logs = await getDeliveryLogs();
 
@@ -33,6 +34,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    initScheduler();
     const body = await request.json();
 
     const updates: any = {};
@@ -52,6 +54,13 @@ export async function POST(request: Request) {
     }
 
     const updatedSchedule = await updateStoredSchedule(updates);
+
+    // If enabled, trigger a background due check
+    if (updatedSchedule.enabled && updatedSchedule.frequency !== 'disabled') {
+      runDueSchedulesCheck().catch((err) =>
+        console.warn('[ScheduleRoute] Background due check note:', err?.message)
+      );
+    }
 
     return NextResponse.json(
       {

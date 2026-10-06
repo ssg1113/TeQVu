@@ -107,6 +107,28 @@ export function AppWrapper({ children }: { children: React.ReactNode }) {
     };
   }, [logout, router]);
 
+  // Automated Newsletter Background Dispatch Checker (Heartbeat)
+  useEffect(() => {
+    const checkCron = async () => {
+      try {
+        await fetch(`/api/newsletter/cron?_t=${Date.now()}`, {
+          method: 'GET',
+          cache: 'no-store',
+        });
+      } catch {
+        // Silently ignore background network hiccups
+      }
+    };
+
+    const initialTimer = setTimeout(checkCron, 3000);
+    const interval = setInterval(checkCron, 5 * 60 * 1000);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0a0f1e] text-slate-900 dark:text-slate-100 transition-colors duration-200">
       <Navbar />

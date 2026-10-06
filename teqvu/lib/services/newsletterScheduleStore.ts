@@ -190,13 +190,19 @@ async function loadData(): Promise<StoredData> {
   // 1. Return in-memory cache if already populated in this invocation
   if (_memCache) return _memCache;
 
-  // 2. Try Supabase first (primary persistent store across serverless instances)
   let loaded: StoredData | null = null;
-  if (SUPABASE_URL && SUPABASE_KEY) {
+
+  // In non-Vercel environments (like local dev), load immediately from local filesystem
+  if (!isVercel) {
+    loaded = await loadFromFilesystem();
+  }
+
+  // On Vercel, try Supabase KV first
+  if (!loaded && isVercel && SUPABASE_URL && SUPABASE_KEY) {
     loaded = await loadFromSupabase();
   }
 
-  // 3. Fall back to local filesystem (/tmp on Vercel, data/ in dev)
+  // Fallback to filesystem (/tmp on Vercel)
   if (!loaded) {
     loaded = await loadFromFilesystem();
   }
@@ -208,11 +214,11 @@ async function loadData(): Promise<StoredData> {
 
 async function saveData(data: StoredData): Promise<void> {
   setMemCache(data);
-  // Persist to filesystem and Supabase in parallel
-  await Promise.allSettled([
-    saveToFilesystem(data),
-    saveToSupabase(data),
-  ]);
+  const tasks: Promise<any>[] = [saveToFilesystem(data)];
+  if (isVercel && SUPABASE_URL && SUPABASE_KEY) {
+    tasks.push(saveToSupabase(data));
+  }
+  await Promise.allSettled(tasks);
 }
 
 // ─── Public API (async) ───────────────────────────────────────────────────────
