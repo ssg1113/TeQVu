@@ -205,18 +205,18 @@ export default function NewsletterPage() {
     return (
       <DashboardLayout>
         <div className="py-20 flex flex-col items-center justify-center text-center max-w-lg mx-auto space-y-6 animate-fade-in">
-          <div className="w-16 h-16 rounded-3xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-xl shadow-cyan-500/10">
+          <div className="w-16 h-16 rounded-3xl bg-cyan-100 dark:bg-cyan-500/10 border border-cyan-200 dark:border-cyan-500/30 flex items-center justify-center text-cyan-700 dark:text-cyan-400 shadow-xl shadow-cyan-500/10">
             <Mail className="w-8 h-8" />
           </div>
 
           <div>
-            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-cyan-100 text-cyan-800 border border-cyan-300/80 dark:bg-cyan-500/10 dark:text-cyan-400 dark:border-cyan-500/20">
               Personalized Intelligence Dispatch
             </span>
             <h1 className="text-2xl font-black text-slate-900 dark:text-white mt-3">
               Sign In to Configure Newsletter & Alerts
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
               Tailor your automated delivery schedule, topical categories, anti-spam filters, and instant developer alerts to your verified email account.
             </p>
           </div>
@@ -224,14 +224,14 @@ export default function NewsletterPage() {
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
             <Link
               href="/signin?notice=auth_required&returnUrl=/newsletter"
-              className="w-full sm:flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 shadow-lg shadow-cyan-500/20 transition"
+              className="w-full sm:flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 shadow-lg shadow-cyan-600/20 transition"
             >
               <span>Sign In to Newsletter</span>
             </Link>
 
             <Link
               href="/trending"
-              className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-white"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition"
             >
               Explore Trending
             </Link>
@@ -268,17 +268,17 @@ export default function NewsletterPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-cyan-500" />
+                    <Mail className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                     Recipient Email Address
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                     Enter the email address where your automated briefs and sample previews will be delivered.
                   </p>
                 </div>
                 {currentUser?.email && (
                   <button
                     onClick={() => setTargetEmail(currentUser.email)}
-                    className="text-[11px] font-mono text-cyan-500 hover:underline"
+                    className="text-[11px] font-mono font-semibold text-cyan-600 dark:text-cyan-400 hover:underline"
                   >
                     Use Account Email
                   </button>
@@ -291,7 +291,7 @@ export default function NewsletterPage() {
                   value={targetEmail}
                   onChange={(e) => setTargetEmail(e.target.value)}
                   placeholder="your-email@gmail.com"
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 />
               </div>
             </div>
@@ -301,14 +301,14 @@ export default function NewsletterPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-cyan-500" />
+                    <Calendar className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                     Digest Delivery Frequency
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                     Select your preferred cadence for automated email summaries.
                   </p>
                 </div>
-                <span className="text-xs font-mono text-cyan-400 font-semibold uppercase">
+                <span className="text-xs font-mono text-cyan-700 dark:text-cyan-400 font-bold uppercase">
                   {newsletterPrefs.frequency}
                 </span>
               </div>
@@ -319,12 +319,12 @@ export default function NewsletterPage() {
                     key={freq}
                     onClick={() => updateNewsletterPrefs({ frequency: freq })}
                     className={`py-2.5 px-3 rounded-xl text-xs font-bold capitalize transition border text-left flex flex-col justify-between ${newsletterPrefs.frequency === freq
-                        ? 'bg-cyan-500 text-white border-cyan-500 shadow-md shadow-cyan-500/20'
-                        : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30'
+                        ? 'bg-cyan-600 dark:bg-cyan-500 text-white border-cyan-600 dark:border-cyan-500 shadow-md shadow-cyan-500/20'
+                        : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/80 dark:bg-slate-900/30'
                       }`}
                   >
                     <span>{freq}</span>
-                    <span className={`text-[10px] font-normal mt-0.5 opacity-80`}>
+                    <span className={`text-[10px] font-normal mt-0.5 ${newsletterPrefs.frequency === freq ? 'text-cyan-100 opacity-95' : 'text-slate-500 dark:text-slate-400'}`}>
                       {freq === 'daily'
                         ? '24h signals'
                         : freq === 'weekly'
@@ -339,10 +339,10 @@ export default function NewsletterPage() {
             </div>
 
             {/* Profile Timer Direction Banner */}
-            <div className="p-6 rounded-2xl bg-gradient-to-br from-cyan-500/10 via-slate-900/40 to-purple-500/10 border border-cyan-500/30 dark:border-cyan-500/20 shadow-md space-y-4">
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-cyan-50 via-white to-purple-50/70 border border-cyan-200/90 shadow-sm dark:from-cyan-950/30 dark:via-[#0f1629] dark:to-purple-950/30 dark:border-cyan-500/30 dark:shadow-md space-y-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="w-10 h-10 rounded-2xl bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400 border border-cyan-200/80 dark:border-cyan-500/30 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
                     <Clock className="w-5 h-5" />
                   </div>
                   <div>
@@ -350,25 +350,25 @@ export default function NewsletterPage() {
                       <h3 className="font-bold text-sm text-slate-900 dark:text-white">
                         Automated Summary Delivery Timer
                       </h3>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-100 text-cyan-800 border border-cyan-300/80 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/30">
                         Profile Feature
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                      To schedule auto email summaries (daily, weekly, or monthly delivery at your preferred time of day), customize your timer settings inside your <strong>User Profile</strong>.
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                      To schedule auto email summaries (daily, weekly, or monthly delivery at your preferred time of day), customize your timer settings inside your <strong className="text-slate-900 dark:text-white font-semibold">User Profile</strong>.
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-slate-200/80 dark:border-slate-800">
+                <div className="flex items-center gap-2 text-xs font-mono text-slate-600 dark:text-slate-300 font-medium">
+                  <Sparkles className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 flex-shrink-0" />
                   <span>Real-time signals filtered by your monitored domains</span>
                 </div>
                 <Link
                   href="/profile"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-500 transition shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-500 dark:bg-cyan-500 dark:hover:bg-cyan-400 transition shadow-sm"
                 >
                   <span>Configure Timer in Profile</span>
                   <ExternalLink className="w-3.5 h-3.5" />
@@ -381,7 +381,7 @@ export default function NewsletterPage() {
               <h3 className="font-bold text-sm text-slate-900 dark:text-white">
                 Included Newsletter Domains
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-600 dark:text-slate-400">
                 Only developments from selected domains will be compiled into your email.
               </p>
               <div className="flex flex-wrap gap-2 pt-2">
@@ -392,8 +392,8 @@ export default function NewsletterPage() {
                       key={cat}
                       onClick={() => handleToggleCategory(cat)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition ${active
-                          ? 'bg-purple-500 text-white border-purple-500 shadow-sm'
-                          : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-purple-400'
+                          ? 'bg-purple-600 dark:bg-purple-600 text-white border-purple-600 shadow-sm font-semibold'
+                          : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-purple-300 dark:hover:border-purple-500/40 bg-slate-50/80 dark:bg-slate-900/30'
                         }`}
                     >
                       {active ? '✓ ' : '+ '}
@@ -407,12 +407,12 @@ export default function NewsletterPage() {
             {/* Smart Anti-Spam & Quiet Hours Engine */}
             <div className="p-6 rounded-2xl bg-white dark:bg-[#0f1629] border border-emerald-500/30 dark:border-emerald-500/30 shadow-sm space-y-4">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 <div>
                   <h3 className="font-bold text-sm text-slate-900 dark:text-white">
                     Smart Alert Throttles & Verification
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                     Guaranteed prevention of notification fatigue.
                   </p>
                 </div>
@@ -420,12 +420,12 @@ export default function NewsletterPage() {
 
               <div className="space-y-3 pt-2 text-xs">
                 {/* Max alerts per day */}
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
                   <div>
                     <span className="font-bold text-slate-900 dark:text-slate-100 block">
                       Maximum Alerts Per Day
                     </span>
-                    <span className="text-slate-400 text-[11px]">
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px]">
                       Strict hard ceiling for critical breaking signals.
                     </span>
                   </div>
@@ -434,7 +434,7 @@ export default function NewsletterPage() {
                     onChange={(e) =>
                       updateNewsletterPrefs({ maxAlertsPerDay: Number(e.target.value) })
                     }
-                    className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1 rounded-lg text-xs font-mono font-bold"
+                    className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg text-xs font-mono font-bold text-slate-900 dark:text-slate-100 shadow-sm"
                   >
                     <option value={1}>1 Alert / Day (Recommended)</option>
                     <option value={2}>2 Alerts / Day</option>
@@ -443,12 +443,12 @@ export default function NewsletterPage() {
                 </div>
 
                 {/* Quiet Hours */}
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
                   <div>
                     <span className="font-bold text-slate-900 dark:text-slate-100 block">
                       Quiet Hours (Do Not Disturb)
                     </span>
-                    <span className="text-slate-400 text-[11px]">
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px]">
                       No alerts will be delivered between these hours.
                     </span>
                   </div>
@@ -459,14 +459,14 @@ export default function NewsletterPage() {
                       onChange={(e) =>
                         updateNewsletterPrefs({ quietHoursStart: e.target.value })
                       }
-                      className="w-16 px-2 py-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-center"
+                      className="w-16 px-2 py-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-center font-bold text-slate-900 dark:text-slate-100 shadow-sm"
                     />
-                    <span>to</span>
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">to</span>
                     <input
                       type="text"
                       value={newsletterPrefs.quietHoursEnd}
                       onChange={(e) => updateNewsletterPrefs({ quietHoursEnd: e.target.value })}
-                      className="w-16 px-2 py-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-center"
+                      className="w-16 px-2 py-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-center font-bold text-slate-900 dark:text-slate-100 shadow-sm"
                     />
                   </div>
                 </div>
@@ -480,7 +480,7 @@ export default function NewsletterPage() {
                 <button
                   onClick={handleSendSample}
                   disabled={isSendingSample || !targetEmail}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 shadow-lg shadow-cyan-500/25 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 shadow-lg shadow-cyan-600/25 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSendingSample ? (
                     <>
@@ -500,19 +500,19 @@ export default function NewsletterPage() {
               {sendResult && (
                 <div
                   className={`p-4 rounded-xl border text-xs space-y-2 animate-fade-in ${!sendResult.success
-                      ? 'bg-red-500/10 border-red-500/30 text-red-800 dark:text-red-200'
+                      ? 'bg-red-50 text-red-900 border-red-200 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-200'
                       : sendResult.mode === 'ethereal_preview'
-                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-800 dark:text-amber-200'
-                        : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-200'
+                        ? 'bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-200'
+                        : 'bg-emerald-50 text-emerald-900 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/30 dark:text-emerald-200'
                     }`}
                 >
                   <div className="flex items-start gap-2">
                     {!sendResult.success ? (
-                      <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                      <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                     ) : sendResult.mode === 'ethereal_preview' ? (
-                      <HelpCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <HelpCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                     ) : (
-                      <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
                     )}
                     <div className="space-y-1.5 w-full">
                       <div className="font-bold text-sm">
@@ -525,8 +525,8 @@ export default function NewsletterPage() {
                       <p className="leading-relaxed opacity-90">{sendResult.message || sendResult.error}</p>
 
                       {sendResult.success && sendResult.mode === 'resend' && (
-                        <div className="mt-2 p-2.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-900 dark:text-emerald-100 flex items-start gap-2 text-[11px]">
-                          <Info className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                        <div className="mt-2 p-2.5 rounded-lg bg-emerald-100/70 border border-emerald-300 text-emerald-950 dark:bg-emerald-500/15 dark:border-emerald-500/30 dark:text-emerald-100 flex items-start gap-2 text-[11px]">
+                          <Info className="w-4 h-4 text-emerald-700 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
                           <div>
                             <strong>Check Gmail Spam or Promotions.</strong> Because Resend sends via its shared test domain (<code className="font-mono text-[10px]">onboarding@resend.dev</code>), Gmail often places this preview into your <strong>Spam / Junk</strong> folder or <strong>Promotions tab</strong>.
                           </div>
@@ -555,92 +555,92 @@ export default function NewsletterPage() {
 
           {/* Email Preview Mockup Column (5 cols) */}
           <div className="lg:col-span-5">
-            <div className="sticky top-24 rounded-2xl bg-white dark:bg-[#0f1629] border border-slate-200 dark:border-slate-800 shadow-2xl p-6 text-xs font-sans space-y-4">
+            <div className="sticky top-24 rounded-2xl bg-white dark:bg-[#0f1629] border border-slate-200 dark:border-slate-800 shadow-xl p-6 text-xs font-sans space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                <span className="font-mono text-[10px] uppercase text-cyan-400 font-bold flex items-center gap-1.5">
+                <span className="font-mono text-[10px] uppercase text-cyan-700 dark:text-cyan-400 font-bold flex items-center gap-1.5">
                   <Eye className="w-3.5 h-3.5" />
                   Live Compiled Email Preview
                 </span>
-                <span className="text-[10px] font-mono text-purple-400 font-bold uppercase">
+                <span className="text-[10px] font-mono text-purple-700 dark:text-purple-400 font-bold uppercase">
                   {newsletterPrefs.frequency} Briefing
                 </span>
               </div>
 
               {/* Email Content Container */}
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800/60 space-y-4">
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800/60 space-y-4">
                 {/* Header */}
-                <div className="flex items-center justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800/60">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-slate-800/60">
                   <div className="flex items-center gap-2">
                     <Logo variant="icon" size="xs" />
                     <span className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-1">
                       <span>Te</span>
-                      <span className="bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent">Q</span>
+                      <span className="bg-gradient-to-tr from-cyan-500 via-blue-500 to-indigo-500 bg-clip-text text-transparent">Q</span>
                       <span>Vu {newsletterPrefs.frequency === 'weekly' ? 'Weekly' : newsletterPrefs.frequency === 'monthly' ? 'Monthly' : 'Daily'} Brief</span>
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-slate-400">
+                  <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
                     {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </span>
                 </div>
 
                 {/* Section 1: Top Developments */}
                 <div>
-                  <div className="text-[10px] font-mono uppercase text-purple-400 font-bold mb-1 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                  <div className="text-[10px] font-mono uppercase text-purple-700 dark:text-purple-400 font-bold mb-1 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-600 dark:bg-purple-400" />
                     1. Important Development &bull; {previewArticle.source.name}
                   </div>
                   <div className="font-bold text-slate-900 dark:text-slate-100 text-xs leading-snug line-clamp-2">
                     {previewArticle.title}
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed line-clamp-2">
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 leading-relaxed line-clamp-2">
                     {previewArticle.summary}
                   </p>
                 </div>
 
                 {/* Section 2: Emerging Technologies */}
                 <div>
-                  <div className="text-[10px] font-mono uppercase text-cyan-400 font-bold mb-1 flex items-center gap-1">
-                    <Flame className="w-3 h-3 text-cyan-400" />
+                  <div className="text-[10px] font-mono uppercase text-cyan-700 dark:text-cyan-400 font-bold mb-1 flex items-center gap-1">
+                    <Flame className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
                     2. Trending Open-Source Velocity
                   </div>
-                  <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                  <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center justify-between">
                     <span>{previewTech.name}</span>
-                    <span className="text-emerald-500 font-mono text-[11px] font-bold">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-mono text-[11px] font-bold">
                       +{previewTech.growth}% Velocity
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-400 line-clamp-2 mt-0.5">
+                  <p className="text-[10px] text-slate-600 dark:text-slate-400 line-clamp-2 mt-0.5">
                     {previewTech.description}
                   </p>
                 </div>
 
                 {/* Section 3: Research Spotlight */}
                 <div>
-                  <div className="text-[10px] font-mono uppercase text-emerald-400 font-bold mb-1 flex items-center gap-1">
-                    <BookOpen className="w-3 h-3 text-emerald-400" />
+                  <div className="text-[10px] font-mono uppercase text-emerald-700 dark:text-emerald-400 font-bold mb-1 flex items-center gap-1">
+                    <BookOpen className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                     3. Research Worth Reading
                   </div>
-                  <div className="font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">
+                  <div className="font-semibold text-slate-900 dark:text-slate-100 line-clamp-1">
                     {previewPaper.title}
                   </div>
-                  <p className="text-[10px] text-slate-400 line-clamp-2 mt-0.5">
+                  <p className="text-[10px] text-slate-600 dark:text-slate-400 line-clamp-2 mt-0.5">
                     {previewPaper.summary}
                   </p>
-                  <span className="text-[10px] text-slate-400 font-mono block mt-1">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono block mt-1">
                     {previewPaper.source} &bull; {previewPaper.authors[0]}
                   </span>
                 </div>
 
                 {/* Section 4: Target Recipient Notice */}
-                <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-[11px] font-mono text-slate-400">
+                <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800/60 flex items-center justify-between text-[11px] font-mono text-slate-600 dark:text-slate-400">
                   <span>Delivering to:</span>
-                  <span className="text-cyan-400 font-bold truncate max-w-[170px]">{targetEmail}</span>
+                  <span className="text-cyan-700 dark:text-cyan-400 font-bold truncate max-w-[170px]">{targetEmail}</span>
                 </div>
               </div>
 
               {/* Unsubscribe footer */}
-              <div className="text-center pt-2 text-[10px] text-slate-400 space-y-1">
-                <div>Automated schedule: <span className="text-cyan-400 font-medium">{getNextDeliveryDescription()}</span></div>
+              <div className="text-center pt-2 text-[10px] text-slate-500 dark:text-slate-400 space-y-1">
+                <div>Automated schedule: <span className="text-cyan-700 dark:text-cyan-400 font-semibold">{getNextDeliveryDescription()}</span></div>
                 <div className="text-slate-500">
                   Attribution: Content verified from official RSS feeds and APIs.
                 </div>
@@ -653,7 +653,7 @@ export default function NewsletterPage() {
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-cyan-400" />
+              <Clock className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
               <h2 className="text-base font-bold text-slate-900 dark:text-white">
                 Recent Dispatched Briefings & Delivery Audit Log
               </h2>
@@ -661,16 +661,16 @@ export default function NewsletterPage() {
             <button
               onClick={fetchScheduleAndLogs}
               disabled={isLoadingLogs}
-              className="text-xs font-mono text-cyan-500 hover:text-cyan-400 flex items-center gap-1 transition"
+              className="text-xs font-mono font-semibold text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 flex items-center gap-1 transition"
             >
               <RotateCw className={`w-3.5 h-3.5 ${isLoadingLogs ? 'animate-spin' : ''}`} />
               <span>Refresh Log</span>
             </button>
           </div>
 
-          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0f1629] overflow-hidden">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0f1629] overflow-hidden shadow-sm">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200/80 dark:border-slate-800/80 text-slate-400 font-mono uppercase tracking-wider text-[10px]">
+              <thead className="bg-slate-100/90 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-mono uppercase tracking-wider text-[10px] font-bold">
                 <tr>
                   <th className="py-3 px-4">Timestamp</th>
                   <th className="py-3 px-4">Type / Cadence</th>
@@ -683,14 +683,14 @@ export default function NewsletterPage() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {deliveryLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-slate-400 font-mono text-xs">
+                    <td colSpan={6} className="py-8 text-center text-slate-500 dark:text-slate-400 font-mono text-xs">
                       No email dispatches recorded yet. Use the buttons above to send a preview or activate automated schedule.
                     </td>
                   </tr>
                 ) : (
                   deliveryLogs.map((row) => (
-                    <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/40 font-mono">
-                      <td className="py-3 px-4 text-slate-400">
+                    <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-900/40 font-mono">
+                      <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
                         {new Date(row.timestamp).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -698,25 +698,25 @@ export default function NewsletterPage() {
                           minute: '2-digit',
                         })}
                       </td>
-                      <td className="py-3 px-4 font-bold capitalize text-cyan-400">
+                      <td className="py-3 px-4 font-bold capitalize text-cyan-700 dark:text-cyan-400">
                         {row.frequency}
                       </td>
-                      <td className="py-3 px-4 text-slate-400 truncate max-w-[150px]">
+                      <td className="py-3 px-4 text-slate-600 dark:text-slate-300 truncate max-w-[150px]">
                         {row.email}
                       </td>
                       <td className="py-3 px-4 font-semibold text-slate-900 dark:text-white font-sans truncate max-w-[280px]">
                         {row.subject}
                       </td>
-                      <td className="py-3 px-4 text-slate-400 uppercase text-[10px]">
+                      <td className="py-3 px-4 text-slate-600 dark:text-slate-400 uppercase text-[10px] font-medium">
                         {row.mode}
                       </td>
                       <td className="py-3 px-4 text-right">
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${row.status === 'delivered'
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${row.status === 'delivered'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300/80 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20'
                               : row.status === 'simulated'
-                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                                : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                                ? 'bg-amber-100 text-amber-800 border border-amber-300/80 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20'
+                                : 'bg-red-100 text-red-800 border border-red-300/80 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20'
                             }`}
                         >
                           {row.status}

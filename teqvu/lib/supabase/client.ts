@@ -50,6 +50,7 @@ export async function signInWithGitHub() {
   return await supabase.auth.signInWithOAuth({
     provider: 'github',
     options: {
+      scopes: 'read:user user:email',
       redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
     },
   });

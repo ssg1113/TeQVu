@@ -44,6 +44,14 @@ export const ANONYMOUS_USER: UserProfile = {
   twoFactorEnabled: false,
 };
 
+export interface UserSavedData {
+  currentUser: Partial<UserProfile>;
+  bookmarkedIds: string[];
+  watchlistIds: string[];
+  interests: string[];
+  newsletterPrefs: NewsletterPreference;
+}
+
 interface AppState {
   // Auth state
   isAuthenticated: boolean;
@@ -66,6 +74,9 @@ interface AppState {
   // User directory for duplicate sign-up prevention
   registeredEmails: string[];
   isEmailRegistered: (email: string) => boolean;
+
+  // Unified per-account persistent storage (bookmarks, watchlist, features, customized options keyed by email)
+  userDataByEmail: Record<string, UserSavedData>;
 
   // Admin Governance & Delegation
   adminEmails: string[];
@@ -128,17 +139,34 @@ export const useAppStore = create<AppState>()(
       adminRolePreference: undefined,
       lastActiveAt: 0,
       sessionTimedOut: false,
+      userDataByEmail: {},
       setAdminRolePreference: (role) => set({ adminRolePreference: role }),
       recordActivity: () => set({ lastActiveAt: Date.now() }),
       setAuthenticated: (val) => set({ isAuthenticated: val }),
       updateUser: (updates) => {
         if (!get().isAuthenticated) return;
-        // Admins cannot change their profile details in Admin mode; profile details must be the same as user profile details
-        if (get().currentUser.role === 'admin') {
-          console.warn('Admins cannot change profile details in Admin mode. Profile details must match user profile.');
-          return;
-        }
-        set((state) => ({ currentUser: { ...state.currentUser, ...updates } }));
+        const cleanEmail = get().currentUser.email?.trim().toLowerCase();
+        set((state) => {
+          const nextUser = { ...state.currentUser, ...updates };
+          const nextUserData = cleanEmail
+            ? {
+                ...state.userDataByEmail,
+                [cleanEmail]: {
+                  ...(state.userDataByEmail[cleanEmail] || {
+                    bookmarkedIds: state.bookmarkedIds,
+                    watchlistIds: state.watchlistIds,
+                    interests: state.interests,
+                    newsletterPrefs: state.newsletterPrefs,
+                  }),
+                  currentUser: nextUser,
+                },
+              }
+            : state.userDataByEmail;
+          return {
+            currentUser: nextUser,
+            userDataByEmail: nextUserData,
+          };
+        });
       },
 
       // User directory
@@ -187,15 +215,17 @@ export const useAppStore = create<AppState>()(
       },
 
       login: (email, role, name, provider, hasPassword) => {
-        // Enforce: ONLY the primary admin (sgdesilva1113@gmail.com) or assigned admin accounts possess 'admin' status
+        const cleanEmail = email.trim().toLowerCase();
         const isAdmin = isAdminAccount(email, get().adminEmails);
-        const prevProviders = get().currentUser.authProviders || ['email'];
-        const updatedProviders = provider && !prevProviders.includes(provider)
-          ? [...prevProviders, provider]
-          : prevProviders;
 
-        // If the user is an admin account, respect explicit target role or stored preference, else default to 'admin'
-        // If they are NOT an admin account, role is ALWAYS strictly forced to 'user'
+        // Retrieve existing unified user record for this email
+        const savedData = get().userDataByEmail?.[cleanEmail];
+        const savedUser = savedData?.currentUser;
+
+        const prevProviders = savedUser?.authProviders || get().currentUser.authProviders || ['email'];
+        const providerToAdd = provider || 'email';
+        const updatedProviders = Array.from(new Set([...prevProviders, providerToAdd]));
+
         let effectiveRole: 'user' | 'admin' = 'user';
         if (isAdmin) {
           if (role) {
@@ -210,57 +240,95 @@ export const useAppStore = create<AppState>()(
         const now = new Date().toISOString();
         const prevUser = get().currentUser;
         const displayName =
-          name ||
-          (prevUser.name &&
-          prevUser.name !== 'Platform Owner & Admin' &&
-          prevUser.name !== 'Admin Operator'
-            ? prevUser.name
-            : email.split('@')[0]);
+          (savedUser?.name && savedUser.name !== ADMIN_NAME)
+            ? savedUser.name
+            : (name && name !== ADMIN_NAME)
+            ? name
+            : (prevUser.name && prevUser.name !== ADMIN_NAME && prevUser.name !== 'Platform Owner & Admin' && prevUser.name !== 'Admin Operator'
+              ? prevUser.name
+              : cleanEmail.split('@')[0]);
 
-        const cleanEmail = email.trim().toLowerCase();
         const currentReg = get().registeredEmails || [];
         const nextReg = currentReg.includes(cleanEmail) ? currentReg : [...currentReg, cleanEmail];
 
-        set((state) => ({
+        // Restored Bookmarks, Watchlist, Interests, Newsletter Preferences
+        const isPrimary = cleanEmail === PRIMARY_ADMIN_EMAIL.toLowerCase();
+        const restoredBookmarks = savedData?.bookmarkedIds ?? (
+          isPrimary ? ['art-001', 'paper-001', 'art-002'] : []
+        );
+        const restoredWatchlist = savedData?.watchlistIds ?? (
+          isPrimary ? ['rust', 'llm-agents', 'nextjs', 'pgvector', 'ebpf'] : ['rust', 'llm-agents', 'nextjs']
+        );
+        const restoredInterests = savedData?.interests ?? (
+          isPrimary ? ['ai', 'web-dev', 'software-eng', 'cloud', 'cybersecurity'] : ['ai', 'web-dev', 'software-eng']
+        );
+        const restoredNewsletter: NewsletterPreference = savedData?.newsletterPrefs ?? {
+          frequency: 'daily',
+          categories: ['AI/ML', 'Languages', 'Cloud Computing', 'Cybersecurity', 'Software Engineering'],
+          enableAlerts: true,
+          alertCategories: ['AI/ML', 'Languages', 'Cybersecurity'],
+          maxAlertsPerDay: 1,
+          quietHoursStart: '22:00',
+          quietHoursEnd: '07:00',
+          deliveryTime: '08:00',
+          deliveryDayOfWeek: 1,
+          deliveryDayOfMonth: 1,
+          scheduledEmail: email,
+          scheduleEnabled: true,
+          timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
+        };
+
+        const resolvedHasPassword =
+          hasPassword !== undefined
+            ? hasPassword
+            : (savedUser?.hasPassword ?? true);
+
+        const updatedUser: UserProfile = {
+          id: savedUser?.id || get().currentUser.id || `usr_${Date.now()}`,
+          email,
+          name: displayName,
+          role: effectiveRole,
+          avatarUrl: savedUser?.avatarUrl || get().currentUser.avatarUrl || '',
+          occupation: savedUser?.occupation || (get().currentUser.occupation !== 'Platform Administrator' ? get().currentUser.occupation : '') || 'Software Engineer',
+          country: savedUser?.country || get().currentUser.country || 'United States',
+          interests: restoredInterests,
+          followedTechs: restoredWatchlist,
+          joinedAt: savedUser?.joinedAt || get().currentUser.joinedAt || now.split('T')[0],
+          hasPassword: resolvedHasPassword,
+          authProviders: updatedProviders,
+          passwordUpdatedAt: savedUser?.passwordUpdatedAt || now,
+          twoFactorEnabled: savedUser?.twoFactorEnabled || false,
+          newsletterPreference: {
+            ...restoredNewsletter,
+            scheduledEmail: email,
+            scheduleEnabled: restoredNewsletter.scheduleEnabled ?? true,
+          },
+        };
+
+        const nextUserDataMap = {
+          ...(get().userDataByEmail || {}),
+          [cleanEmail]: {
+            currentUser: updatedUser,
+            bookmarkedIds: restoredBookmarks,
+            watchlistIds: restoredWatchlist,
+            interests: restoredInterests,
+            newsletterPrefs: restoredNewsletter,
+          },
+        };
+
+        set({
           isAuthenticated: true,
           adminRolePreference: effectiveRole,
           lastActiveAt: Date.now(),
           sessionTimedOut: false,
           registeredEmails: nextReg,
-          currentUser: {
-            id: state.currentUser.id || `usr_${Date.now()}`,
-            email,
-            name: displayName,
-            role: effectiveRole,
-            avatarUrl: state.currentUser.avatarUrl || '',
-            occupation:
-              state.currentUser.occupation && state.currentUser.occupation !== 'Platform Administrator'
-                ? state.currentUser.occupation
-                : 'Software Engineer',
-            country: state.currentUser.country || 'United States',
-            interests:
-              state.interests.length > 0
-                ? state.interests
-                : ['ai', 'web-dev', 'software-eng', 'cloud', 'cybersecurity'],
-            followedTechs:
-              state.watchlistIds.length > 0
-                ? state.watchlistIds
-                : ['rust', 'llm-agents', 'nextjs', 'pgvector', 'ebpf'],
-            joinedAt: state.currentUser.joinedAt || now.split('T')[0],
-            hasPassword:
-              hasPassword !== undefined
-                ? hasPassword
-                : (state.currentUser.hasPassword ?? true),
-            authProviders: updatedProviders,
-            passwordUpdatedAt: state.currentUser.passwordUpdatedAt || now,
-            twoFactorEnabled: state.currentUser.twoFactorEnabled || false,
-            newsletterPreference: {
-              ...state.newsletterPrefs,
-              scheduledEmail: email,
-              scheduleEnabled: state.newsletterPrefs.scheduleEnabled ?? true,
-            },
-          },
-        }));
+          currentUser: updatedUser,
+          bookmarkedIds: restoredBookmarks,
+          watchlistIds: restoredWatchlist,
+          interests: restoredInterests,
+          newsletterPrefs: restoredNewsletter,
+          userDataByEmail: nextUserDataMap,
+        });
       },
 
       signup: (data) => {
@@ -272,65 +340,125 @@ export const useAppStore = create<AppState>()(
         const currentReg = get().registeredEmails || [];
         const nextReg = currentReg.includes(cleanEmail) ? currentReg : [...currentReg, cleanEmail];
 
+        const initialBookmarks = ['art-001', 'paper-001'];
+        const initialWatchlist = ['rust', 'llm-agents', 'nextjs', 'pgvector'];
+        const initialInterests = ['ai', 'web-dev', 'software-eng', 'cloud', 'cybersecurity'];
+        const initialNewsletter: NewsletterPreference = {
+          frequency: 'daily',
+          categories: ['AI/ML', 'Languages', 'Cloud', 'Cybersecurity', 'DevOps'],
+          enableAlerts: true,
+          alertCategories: ['AI/ML', 'Languages', 'Cybersecurity'],
+          maxAlertsPerDay: 1,
+          quietHoursStart: '22:00',
+          quietHoursEnd: '07:00',
+          deliveryTime: '08:00',
+          deliveryDayOfWeek: 1,
+          deliveryDayOfMonth: 1,
+          scheduledEmail: data.email,
+          scheduleEnabled: true,
+          timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
+        };
+
+        const newUser: UserProfile = {
+          id: `usr_${Date.now()}`,
+          name: data.name,
+          email: data.email,
+          occupation: (data.occupation as Occupation) || 'Software Engineer',
+          country: (data as any).country || 'United States',
+          role: effectiveRole,
+          joinedAt: now.split('T')[0],
+          hasPassword: true,
+          authProviders: ['email'],
+          passwordUpdatedAt: now,
+          avatarUrl: '',
+          interests: initialInterests,
+          followedTechs: initialWatchlist,
+          twoFactorEnabled: false,
+          newsletterPreference: initialNewsletter,
+        };
+
+        const nextUserDataMap = {
+          ...(get().userDataByEmail || {}),
+          [cleanEmail]: {
+            currentUser: newUser,
+            bookmarkedIds: initialBookmarks,
+            watchlistIds: initialWatchlist,
+            interests: initialInterests,
+            newsletterPrefs: initialNewsletter,
+          },
+        };
+
         set({
           isAuthenticated: true,
           adminRolePreference: effectiveRole,
           lastActiveAt: Date.now(),
           sessionTimedOut: false,
           registeredEmails: nextReg,
-          currentUser: {
-            id: `usr_${Date.now()}`,
-            name: data.name,
-            email: data.email,
-            occupation: (data.occupation as Occupation) || 'Software Engineer',
-            country: (data as any).country || 'United States',
-            role: effectiveRole,
-            joinedAt: now.split('T')[0],
-            hasPassword: true,
-            authProviders: ['email'],
-            passwordUpdatedAt: now,
-            avatarUrl: '',
-            interests: ['ai', 'web-dev', 'software-eng', 'cloud', 'cybersecurity'],
-            followedTechs: ['rust', 'llm-agents', 'nextjs', 'pgvector', 'ebpf'],
-            twoFactorEnabled: false,
-            newsletterPreference: {
-              frequency: 'daily',
-              categories: ['AI/ML', 'Languages', 'Cloud', 'Cybersecurity', 'DevOps'],
-              enableAlerts: true,
-              alertCategories: ['AI/ML', 'Languages', 'Cybersecurity'],
-              maxAlertsPerDay: 1,
-              quietHoursStart: '22:00',
-              quietHoursEnd: '07:00',
-              deliveryTime: '08:00',
-              deliveryDayOfWeek: 1,
-              deliveryDayOfMonth: 1,
-              scheduledEmail: data.email,
-              scheduleEnabled: true,
-              timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
-            },
-          },
+          currentUser: newUser,
+          bookmarkedIds: initialBookmarks,
+          watchlistIds: initialWatchlist,
+          interests: initialInterests,
+          newsletterPrefs: initialNewsletter,
+          userDataByEmail: nextUserDataMap,
         });
       },
 
       setPasswordStatus: (hasPassword, updatedAt) => {
-        set((state) => ({
-          currentUser: {
+        const cleanEmail = get().currentUser.email?.trim().toLowerCase();
+        set((state) => {
+          const nextUser = {
             ...state.currentUser,
             hasPassword,
             passwordUpdatedAt: updatedAt || new Date().toISOString(),
-          },
-        }));
+          };
+          const nextUserData = cleanEmail
+            ? {
+                ...state.userDataByEmail,
+                [cleanEmail]: {
+                  ...(state.userDataByEmail[cleanEmail] || {
+                    bookmarkedIds: state.bookmarkedIds,
+                    watchlistIds: state.watchlistIds,
+                    interests: state.interests,
+                    newsletterPrefs: state.newsletterPrefs,
+                  }),
+                  currentUser: nextUser,
+                },
+              }
+            : state.userDataByEmail;
+          return {
+            currentUser: nextUser,
+            userDataByEmail: nextUserData,
+          };
+        });
       },
 
       linkAuthProvider: (provider) => {
+        const cleanEmail = get().currentUser.email?.trim().toLowerCase();
         set((state) => {
           const current = state.currentUser.authProviders || ['email'];
           if (current.includes(provider)) return state;
+          const nextProviders = [...current, provider];
+          const nextUser = {
+            ...state.currentUser,
+            authProviders: nextProviders,
+          };
+          const nextUserData = cleanEmail
+            ? {
+                ...state.userDataByEmail,
+                [cleanEmail]: {
+                  ...(state.userDataByEmail[cleanEmail] || {
+                    bookmarkedIds: state.bookmarkedIds,
+                    watchlistIds: state.watchlistIds,
+                    interests: state.interests,
+                    newsletterPrefs: state.newsletterPrefs,
+                  }),
+                  currentUser: nextUser,
+                },
+              }
+            : state.userDataByEmail;
           return {
-            currentUser: {
-              ...state.currentUser,
-              authProviders: [...current, provider],
-            },
+            currentUser: nextUser,
+            userDataByEmail: nextUserData,
           };
         });
       },
@@ -379,13 +507,24 @@ export const useAppStore = create<AppState>()(
         isLoggingOut = true;
 
         try {
-          // 1. Immediately reset state synchronously in the Zustand store
-          // Doing this FIRST ensures:
-          // - Instant UI transition without waiting for network or browser locks
-          // - All auth listeners see isAuthenticated === false immediately, preventing cascade loops
+          // Snapshot current user's state into persistent storage before clearing active session
+          const currentEmail = get().currentUser.email?.trim().toLowerCase();
+          const savedMap = { ...(get().userDataByEmail || {}) };
+          if (currentEmail) {
+            savedMap[currentEmail] = {
+              currentUser: { ...get().currentUser },
+              bookmarkedIds: [...get().bookmarkedIds],
+              watchlistIds: [...get().watchlistIds],
+              interests: [...get().interests],
+              newsletterPrefs: { ...get().newsletterPrefs },
+            };
+          }
+
+          // 1. Immediately reset active session state synchronously in the Zustand store
           set({
             isAuthenticated: false,
             currentUser: ANONYMOUS_USER,
+            userDataByEmail: savedMap,
             bookmarkedIds: [],
             watchlistIds: [],
             interests: [],
@@ -444,7 +583,7 @@ export const useAppStore = create<AppState>()(
       },
 
       deleteAccount: async () => {
-        const currentEmail = get().currentUser.email;
+        const currentEmail = get().currentUser.email?.trim().toLowerCase();
         const currentId = get().currentUser.id;
 
         try {
@@ -458,18 +597,17 @@ export const useAppStore = create<AppState>()(
         }
 
         const remainingRegistered = (get().registeredEmails || []).filter(
-          (e) => e.trim().toLowerCase() !== currentEmail.trim().toLowerCase()
+          (e) => e.trim().toLowerCase() !== (currentEmail || '')
         );
-        set({ registeredEmails: remainingRegistered });
+        const remainingData = { ...(get().userDataByEmail || {}) };
+        if (currentEmail) {
+          delete remainingData[currentEmail];
+        }
+
+        set({ registeredEmails: remainingRegistered, userDataByEmail: remainingData });
 
         // Safely perform logout to clear session & storage
         await get().logout();
-
-        if (typeof window !== 'undefined') {
-          try {
-            localStorage.removeItem('teqvu-storage');
-          } catch {}
-        }
 
         return true;
       },
@@ -480,10 +618,27 @@ export const useAppStore = create<AppState>()(
         if (!get().isAuthenticated) return;
         set((state) => {
           const exists = state.bookmarkedIds.includes(id);
+          const nextBookmarks = exists
+            ? state.bookmarkedIds.filter((item) => item !== id)
+            : [...state.bookmarkedIds, id];
+          const email = state.currentUser.email?.trim().toLowerCase();
+          const nextUserData = email
+            ? {
+                ...state.userDataByEmail,
+                [email]: {
+                  ...(state.userDataByEmail[email] || {
+                    currentUser: state.currentUser,
+                    watchlistIds: state.watchlistIds,
+                    interests: state.interests,
+                    newsletterPrefs: state.newsletterPrefs,
+                  }),
+                  bookmarkedIds: nextBookmarks,
+                },
+              }
+            : state.userDataByEmail;
           return {
-            bookmarkedIds: exists
-              ? state.bookmarkedIds.filter((item) => item !== id)
-              : [...state.bookmarkedIds, id],
+            bookmarkedIds: nextBookmarks,
+            userDataByEmail: nextUserData,
           };
         });
       },
@@ -495,10 +650,28 @@ export const useAppStore = create<AppState>()(
         if (!get().isAuthenticated) return;
         set((state) => {
           const exists = state.watchlistIds.includes(id);
+          const nextWatchlist = exists
+            ? state.watchlistIds.filter((item) => item !== id)
+            : [...state.watchlistIds, id];
+          const email = state.currentUser.email?.trim().toLowerCase();
+          const nextUserData = email
+            ? {
+                ...state.userDataByEmail,
+                [email]: {
+                  ...(state.userDataByEmail[email] || {
+                    currentUser: state.currentUser,
+                    bookmarkedIds: state.bookmarkedIds,
+                    interests: state.interests,
+                    newsletterPrefs: state.newsletterPrefs,
+                  }),
+                  watchlistIds: nextWatchlist,
+                },
+              }
+            : state.userDataByEmail;
           return {
-            watchlistIds: exists
-              ? state.watchlistIds.filter((item) => item !== id)
-              : [...state.watchlistIds, id],
+            watchlistIds: nextWatchlist,
+            currentUser: { ...state.currentUser, followedTechs: nextWatchlist },
+            userDataByEmail: nextUserData,
           };
         });
       },
@@ -513,9 +686,25 @@ export const useAppStore = create<AppState>()(
           const newInterests = exists
             ? state.interests.filter((item) => item !== id)
             : [...state.interests, id];
+          const email = state.currentUser.email?.trim().toLowerCase();
+          const nextUserData = email
+            ? {
+                ...state.userDataByEmail,
+                [email]: {
+                  ...(state.userDataByEmail[email] || {
+                    currentUser: state.currentUser,
+                    bookmarkedIds: state.bookmarkedIds,
+                    watchlistIds: state.watchlistIds,
+                    newsletterPrefs: state.newsletterPrefs,
+                  }),
+                  interests: newInterests,
+                },
+              }
+            : state.userDataByEmail;
           return {
             interests: newInterests,
             currentUser: { ...state.currentUser, interests: newInterests },
+            userDataByEmail: nextUserData,
           };
         });
       },
@@ -538,9 +727,29 @@ export const useAppStore = create<AppState>()(
       },
       updateNewsletterPrefs: (prefs) => {
         if (!get().isAuthenticated) return;
-        set((state) => ({
-          newsletterPrefs: { ...state.newsletterPrefs, ...prefs },
-        }));
+        set((state) => {
+          const nextPrefs = { ...state.newsletterPrefs, ...prefs };
+          const email = state.currentUser.email?.trim().toLowerCase();
+          const nextUserData = email
+            ? {
+                ...state.userDataByEmail,
+                [email]: {
+                  ...(state.userDataByEmail[email] || {
+                    currentUser: state.currentUser,
+                    bookmarkedIds: state.bookmarkedIds,
+                    watchlistIds: state.watchlistIds,
+                    interests: state.interests,
+                  }),
+                  newsletterPrefs: nextPrefs,
+                },
+              }
+            : state.userDataByEmail;
+          return {
+            newsletterPrefs: nextPrefs,
+            currentUser: { ...state.currentUser, newsletterPreference: nextPrefs },
+            userDataByEmail: nextUserData,
+          };
+        });
       },
 
       // Real-Time Notifications
@@ -649,6 +858,7 @@ export const useAppStore = create<AppState>()(
         lastActiveAt: state.lastActiveAt,
         adminEmails: state.adminEmails,
         registeredEmails: state.registeredEmails,
+        userDataByEmail: state.userDataByEmail,
         bookmarkedIds: state.bookmarkedIds,
         watchlistIds: state.watchlistIds,
         interests: state.interests,
@@ -658,7 +868,7 @@ export const useAppStore = create<AppState>()(
         notifiedKeys: state.notifiedKeys,
       }),
       onRehydrateStorage: () => (state) => {
-        // If unauthenticated, sanitize state so no previous user details are ever exposed
+        // If unauthenticated, sanitize active session so no previous user details are visible
         if (state && !state.isAuthenticated) {
           state.currentUser = ANONYMOUS_USER;
           state.bookmarkedIds = [];

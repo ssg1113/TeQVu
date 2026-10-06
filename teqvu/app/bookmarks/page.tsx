@@ -207,14 +207,14 @@ export default function BookmarksPage() {
         {savedArticles.length === 0 && savedResearch.length === 0 && (
           <div className="p-12 text-center text-slate-400 bg-white dark:bg-[#0f1629] rounded-2xl border border-slate-200 dark:border-slate-800">
             <Bookmark className="w-10 h-10 mx-auto text-slate-500 mb-3 opacity-30" />
-            <p className="font-semibold text-slate-300">No bookmarks saved yet</p>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="font-semibold text-slate-800 dark:text-slate-200">No bookmarks saved yet</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
               Click the bookmark icon on any article or research paper across the platform to save it here.
             </p>
             <div className="mt-4">
               <Link
                 href="/latest"
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-500"
+                className="inline-block px-4 py-2 rounded-xl text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-500 shadow-md shadow-cyan-600/20 transition"
               >
                 Browse Latest Feed
               </Link>

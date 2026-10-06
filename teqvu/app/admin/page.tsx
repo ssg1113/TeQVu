@@ -1146,29 +1146,29 @@ export default function AdminDashboardPage() {
         {activeTab === 'delegation' && (
           <div className="space-y-6 animate-fade-in">
             {/* Delegation Overview Hero Card */}
-            <div className="p-6 rounded-2xl bg-gradient-to-br from-purple-900/30 via-slate-900/40 to-slate-950 border border-purple-500/30 shadow-xl space-y-4">
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-purple-50 via-white to-purple-50/60 border border-purple-200 shadow-sm dark:from-purple-900/30 dark:via-slate-900/40 dark:to-slate-950 dark:border-purple-500/30 dark:shadow-xl space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 shadow-md">
+                  <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-700 border border-purple-200 dark:bg-purple-500/20 dark:border-purple-500/40 dark:text-purple-400 flex items-center justify-center shadow-sm">
                     <ShieldCheck className="w-6 h-6" />
                   </div>
                   <div>
                     <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                       <span>Administrator Access & Role Governance</span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/30 uppercase font-semibold">
                         Strict Lockdown Active
                       </span>
                     </h2>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Platform root owner is <span className="font-mono text-purple-400 font-semibold">{PRIMARY_ADMIN_EMAIL}</span>. Only authorized administrators can manage platform sources.
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                      Platform root owner is <span className="font-mono text-purple-700 dark:text-purple-400 font-semibold">{PRIMARY_ADMIN_EMAIL}</span>. Only authorized administrators can manage platform sources.
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <div className="px-3.5 py-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-right">
-                    <div className="text-[10px] font-mono text-slate-400 uppercase">Authorized Admins</div>
-                    <div className="text-lg font-black text-purple-400 font-mono">{adminEmails.length}</div>
+                  <div className="px-3.5 py-2 rounded-xl bg-purple-100/70 border border-purple-200 dark:bg-purple-500/10 dark:border-purple-500/20 text-right">
+                    <div className="text-[10px] font-mono text-slate-600 dark:text-slate-400 uppercase font-medium">Authorized Admins</div>
+                    <div className="text-lg font-black text-purple-700 dark:text-purple-400 font-mono">{adminEmails.length}</div>
                   </div>
                 </div>
               </div>

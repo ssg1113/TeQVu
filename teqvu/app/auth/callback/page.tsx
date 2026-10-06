@@ -51,41 +51,62 @@ export default function AuthCallbackPage() {
       const processSession = (session: any) => {
         if (!session?.user || !isMounted) return false;
         const user = session.user;
-        const email = user.email || '';
-        const isAdmin = isAdminAccount(email, adminEmails);
-        const name = isAdmin
-          ? ADMIN_NAME
-          : (user.user_metadata?.full_name ||
-             user.user_metadata?.name ||
-             user.user_metadata?.user_name ||
-             email.split('@')[0]);
+        const rawEmail = user.email || '';
+        const cleanEmail = rawEmail.trim().toLowerCase();
+        const isAdmin = isAdminAccount(cleanEmail, adminEmails);
+
+        const existingSaved = useAppStore.getState().userDataByEmail?.[cleanEmail];
+        const existingUser = existingSaved?.currentUser;
+
+        // Display name determination: keep authentic custom/OAuth profile name
+        const rawName =
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          user.user_metadata?.user_name ||
+          (cleanEmail ? cleanEmail.split('@')[0] : '');
+
+        const name = (existingUser?.name && existingUser.name !== ADMIN_NAME)
+          ? existingUser.name
+          : (rawName && rawName !== ADMIN_NAME ? rawName : (isAdmin ? 'Sandeepa De Silva' : cleanEmail.split('@')[0]));
+
         const authIntent = typeof window !== 'undefined' ? sessionStorage.getItem('auth_flow_intent') : null;
         if (typeof window !== 'undefined') sessionStorage.removeItem('auth_flow_intent');
 
         // If the user arrived from the sign-up page but an account with this email already exists,
-        // prevent duplicate account creation and guide them to sign in
-        const isRegistered = useAppStore.getState().isEmailRegistered(email);
+        // guide them seamlessly into their existing account or redirect to sign in
+        const isRegistered = useAppStore.getState().isEmailRegistered(cleanEmail);
         const createdAt = user.created_at ? new Date(user.created_at).getTime() : 0;
         const isOldAccount = createdAt > 0 && (Date.now() - createdAt > 15000);
 
         if (authIntent === 'signup' && (isRegistered || isOldAccount)) {
           setStatus('This account is already registered. Redirecting to sign in...');
           setTimeout(() => {
-            router.push(`/signin?email=${encodeURIComponent(email)}&notice=already_registered`);
+            router.push(`/signin?email=${encodeURIComponent(cleanEmail)}&notice=already_registered`);
           }, 800);
           return true;
         }
 
-        const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture;
+        const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || existingUser?.avatarUrl;
         const oauthRole = typeof window !== 'undefined' ? sessionStorage.getItem('preferred_oauth_role') : null;
         if (typeof window !== 'undefined') sessionStorage.removeItem('preferred_oauth_role');
         const rolePref = (oauthRole === 'user' || oauthRole === 'admin') ? oauthRole : useAppStore.getState().adminRolePreference;
         const role: 'user' | 'admin' = isAdmin ? (rolePref || 'admin') : 'user';
         const provider = (user.app_metadata?.provider || 'google') as 'google' | 'github';
-        const hasPassword = Boolean(user.user_metadata?.has_password);
 
-        login(email, role, name, provider, hasPassword);
+        // Check if user already has a password set via email/password registration or previous setup
+        const hasPassword = Boolean(
+          user.user_metadata?.has_password ||
+          existingUser?.hasPassword ||
+          isRegistered
+        );
 
+        // 1. Log in and restore all saved bookmarks, watchlist, interests, newsletter preferences
+        login(cleanEmail, role, name, provider, hasPassword);
+
+        // 2. Link provider to the account's unified authentication methods
+        useAppStore.getState().linkAuthProvider(provider);
+
+        // 3. Update user profile with latest Supabase ID, avatar, and password flag
         if (avatarUrl || user.id) {
           updateUser({
             id: user.id,
@@ -94,12 +115,11 @@ export default function AuthCallbackPage() {
           });
         }
 
-        // If the user authenticated via OAuth and hasn't established a validated password yet,
-        // redirect to set-password to enforce unified account credentials
-        if (!hasPassword) {
+        // Only redirect to set-password if they came specifically from a brand new sign-up flow and have no password
+        if (authIntent === 'signup' && !hasPassword) {
           setStatus('Account authenticated! Directing to set your validated password...');
           setTimeout(() => {
-            router.push(`/auth/set-password?provider=${provider}&email=${encodeURIComponent(email)}`);
+            router.push(`/auth/set-password?provider=${provider}&email=${encodeURIComponent(cleanEmail)}`);
           }, 600);
           return true;
         }

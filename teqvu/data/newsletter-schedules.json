@@ -3,7 +3,7 @@
     "id": "default",
     "email": "sgdesilva1113@gmail.com",
     "frequency": "daily",
-    "deliveryTime": "08:00",
+    "deliveryTime": "09:30",
     "deliveryDayOfWeek": 1,
     "deliveryDayOfMonth": 1,
     "categories": [
@@ -13,12 +13,12 @@
       "Cybersecurity",
       "DevOps"
     ],
-    "enabled": true,
+    "enabled": false,
     "timezone": "Asia/Colombo",
     "lastSentAt": "2026-09-30T05:36:02.156Z",
     "lastSentCadence": "monthly",
     "createdAt": "2026-09-30T04:07:32.903Z",
-    "updatedAt": "2026-10-01T16:54:17.889Z"
+    "updatedAt": "2026-10-06T02:58:22.926Z"
   },
   "logs": [
     {

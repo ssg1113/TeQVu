@@ -211,10 +211,6 @@ export default function ProfilePage() {
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentUser.role === 'admin') {
-      alert('Admin profile details cannot be modified. They must be the same as your user profile details.');
-      return;
-    }
     updateUser({ name, occupation, country });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
@@ -642,12 +638,12 @@ export default function ProfilePage() {
                       updateNewsletterPrefs({ frequency: freq });
                     }}
                     className={`py-2 px-2.5 rounded-xl text-xs font-bold capitalize transition border text-center ${frequency === freq
-                        ? 'bg-cyan-500 text-white border-cyan-500 shadow-md shadow-cyan-500/20'
-                        : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30'
+                        ? 'bg-cyan-600 dark:bg-cyan-500 text-white border-cyan-600 dark:border-cyan-500 shadow-md shadow-cyan-500/20'
+                        : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/80 dark:bg-slate-900/30'
                       }`}
                   >
                     <div>{freq}</div>
-                    <div className="text-[10px] font-normal opacity-80 mt-0.5">
+                    <div className={`text-[10px] font-normal mt-0.5 ${frequency === freq ? 'text-cyan-100 opacity-95' : 'text-slate-500 dark:text-slate-400'}`}>
                       {freq === 'daily' ? '24h signals' : freq === 'weekly' ? '7-day digest' : '30-day radar'}
                     </div>
                   </button>
@@ -676,8 +672,8 @@ export default function ProfilePage() {
                     key={preset.value}
                     onClick={() => handleTimeChange(preset.value)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${deliveryTime === preset.value
-                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 font-bold'
-                        : 'bg-slate-100 dark:bg-slate-800/80 text-slate-500 hover:text-slate-900 dark:hover:text-white border border-transparent'
+                        ? 'bg-cyan-100 text-cyan-800 border border-cyan-300 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/40 font-bold shadow-sm'
+                        : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700'
                       }`}
                   >
                     {preset.label}
@@ -703,8 +699,8 @@ export default function ProfilePage() {
                       updateNewsletterPrefs({ deliveryDayOfWeek: day.value });
                     }}
                     className={`py-2 rounded-xl text-xs font-mono font-bold transition border ${deliveryDayOfWeek === day.value
-                        ? 'bg-purple-500 text-white border-purple-500 shadow-sm'
-                        : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-purple-400'
+                        ? 'bg-purple-600 dark:bg-purple-600 text-white border-purple-600 shadow-sm'
+                        : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-purple-300 dark:hover:border-purple-500/40 bg-slate-50/80 dark:bg-slate-900/30'
                       }`}
                   >
                     {day.label}
@@ -730,8 +726,8 @@ export default function ProfilePage() {
                       updateNewsletterPrefs({ deliveryDayOfMonth: d.value });
                     }}
                     className={`py-2 px-3 rounded-xl text-xs font-mono font-bold transition border text-center ${deliveryDayOfMonth === d.value
-                        ? 'bg-purple-500 text-white border-purple-500 shadow-sm'
-                        : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-purple-400'
+                        ? 'bg-purple-600 dark:bg-purple-600 text-white border-purple-600 shadow-sm'
+                        : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-purple-300 dark:hover:border-purple-500/40 bg-slate-50/80 dark:bg-slate-900/30'
                       }`}
                   >
                     {d.label}

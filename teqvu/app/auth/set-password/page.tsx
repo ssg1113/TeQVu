@@ -19,11 +19,12 @@ import { Logo } from '../../../components/ui/Logo';
 import { PasswordStrengthIndicator } from '../../../components/ui/PasswordStrengthIndicator';
 import { updateUserPassword, supabase } from '../../../lib/supabase/client';
 import { useAppStore } from '../../../lib/store/useAppStore';
+import { isAdminAccount } from '../../../lib/security/admin';
 
 function SetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { currentUser, setPasswordStatus, linkAuthProvider, updateUser } = useAppStore();
+  const { currentUser, setPasswordStatus, linkAuthProvider, updateUser, adminEmails } = useAppStore();
 
   const providerParam = (searchParams.get('provider') || 'google') as 'google' | 'github';
   const emailParam = searchParams.get('email') || currentUser.email || '';
@@ -86,7 +87,7 @@ function SetPasswordContent() {
 
       setSuccess(true);
       setTimeout(() => {
-        const isAdmin = (email || currentUser.email).toLowerCase().includes('admin');
+        const isAdmin = isAdminAccount(email || currentUser.email, adminEmails);
         router.push(isAdmin ? '/admin' : '/home');
       }, 1500);
     } catch (err: any) {
@@ -222,11 +223,19 @@ function SetPasswordContent() {
           </form>
         )}
 
-        <div className="text-center text-[11px] text-slate-400">
-          Already verified?{' '}
-          <Link href="/signin" className="text-cyan-500 font-semibold hover:underline">
-            Return to Sign In
+        <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+          <Link
+            href={isAdminAccount(email || currentUser.email, adminEmails) ? '/admin' : '/home'}
+            className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition"
+          >
+            Skip for now &rarr;
           </Link>
+          <div>
+            Already verified?{' '}
+            <Link href="/signin" className="text-cyan-500 font-semibold hover:underline">
+              Return to Sign In
+            </Link>
+          </div>
         </div>
       </div>
     </div>

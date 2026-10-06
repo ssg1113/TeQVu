@@ -32,7 +32,7 @@ import {
 function SignInContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, adminEmails, adminRolePreference } = useAppStore();
+  const { login, updateUser, adminEmails, adminRolePreference } = useAppStore();
 
   const switchedParam = searchParams.get('switched') === 'true';
   const roleParam = searchParams.get('role');
@@ -98,7 +98,15 @@ function SignInContent() {
       // If user is an admin account, respect their chosen role mode
       const targetRole: 'user' | 'admin' = isAdmin ? selectedRole : 'user';
 
-      login(email, targetRole, name);
+      login(email, targetRole, name, 'email', true);
+
+      if (user?.id) {
+        updateUser({
+          id: user.id,
+          hasPassword: true,
+          ...(user.user_metadata?.avatar_url ? { avatarUrl: user.user_metadata.avatar_url } : {}),
+        });
+      }
 
       if (returnUrl && !returnUrl.startsWith('//')) {
         router.push(returnUrl);
@@ -189,7 +197,7 @@ function SignInContent() {
             <div>
               <p className="font-bold text-slate-900 dark:text-white">Signed Out Successfully</p>
               <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
-                Your session has been securely closed. All cached credentials and personalized data have been cleared.
+                Your session has been securely closed. Your saved bookmarks, watchlist, and personalized preferences are safely preserved for your next sign in.
               </p>
             </div>
           </div>
